@@ -77,15 +77,23 @@
     let state = loadState();
     let currentView = localStorage.getItem('polychromos_view') || 'numeric';
 
-    function isOwned(nr) { return !!(state[nr]?.owned); }
-    function getOhuhu(nr) { return state[nr]?.ohuhu || ''; }
-    function ownedCount() { return PENCILS.filter(p => isOwned(p.nr)).length; }
+    function isOwned(nr)    { return !!(state[nr]?.owned); }
+    function isWishlist(nr) { return !!(state[nr]?.wishlist); }
+    function getOhuhu(nr)   { return state[nr]?.ohuhu || ''; }
+    function ownedCount()   { return PENCILS.filter(p => isOwned(p.nr)).length; }
+    function wishlistCount(){ return PENCILS.filter(p => isWishlist(p.nr)).length; }
 
     function toggleOwned(nr) {
       state[nr] = state[nr] || {};
       state[nr].owned = !state[nr].owned;
       saveState(); broadcastUpdate(); scheduleGistSave();
       renderAll();
+    }
+
+    function toggleWishlist(nr) {
+      state[nr] = state[nr] || {};
+      state[nr].wishlist = !state[nr].wishlist;
+      saveState(); broadcastUpdate(); scheduleGistSave(); renderAll();
     }
 
     function setOhuhu(nr, value) {
@@ -259,16 +267,21 @@
             <span class="progress-label">${count} / ${PENCILS.length} · ${pct}%</span>
           </div>
           <div class="view-toggle">
-            <button id="btn-numeric" class="toggle-btn" onclick="setView('numeric')">Nummerisch</button>
-            <button id="btn-groups" class="toggle-btn" onclick="setView('groups')">Farbgruppen</button>
+            <button id="btn-numeric"  class="toggle-btn" onclick="setView('numeric')">Nummerisch</button>
+            <button id="btn-groups"   class="toggle-btn" onclick="setView('groups')">Farbgruppen</button>
+            <button id="btn-wishlist" class="toggle-btn" onclick="setView('wishlist')">Einkaufsliste${wishlistCount() ? ` (${wishlistCount()})` : ''}</button>
           </div>
         </div>`;
     }
 
     // ── Render: Tile ──────────────────────────────────────────────────────────
+    const ICON_CART = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>`;
+
     function renderTile(p) {
-      const owned = isOwned(p.nr);
-      const badge = owned ? `<div class="tile-badge">✓</div>` : '';
+      const owned    = isOwned(p.nr);
+      const wishlist = isWishlist(p.nr);
+      const badge    = owned ? `<div class="tile-badge">✓</div>` : '';
+      const cartBadge = `<div class="tile-refill-badge${wishlist ? ' tile-refill-badge--owned' : ''}" onclick="event.stopPropagation();toggleWishlist(${p.nr})" title="${wishlist ? 'Auf der Einkaufsliste' : 'Zur Einkaufsliste hinzufügen'}">${ICON_CART}</div>`;
       return `<div
         class="tile${owned ? '' : ' tile--unowned'}"
         onclick="toggleOwned(${p.nr})"
@@ -277,6 +290,7 @@
         <div class="tile-code">${p.nr}</div>
         <div class="tile-name">${p.name}</div>
         ${badge}
+        ${cartBadge}
         ${ohuhuSelect(p.nr)}
       </div>`;
     }
@@ -306,12 +320,27 @@
         </div>`).join('');
     }
 
+    function renderShoppingList() {
+      const items = PENCILS.filter(p => isWishlist(p.nr));
+      if (!items.length) return `<p class="shopping-empty">Keine Stifte auf der Einkaufsliste.</p>`;
+      return `<div class="shopping-list">${items.map(p => `
+        <div class="shopping-item" onclick="toggleWishlist(${p.nr})" title="Von Liste entfernen">
+          <div class="shopping-swatch" style="background:${p.color}"></div>
+          <span class="shopping-code">Nr. ${p.nr}</span>
+          <span class="shopping-name">${p.name}</span>
+        </div>`).join('')}</div>`;
+    }
+
     // ── Render: All ───────────────────────────────────────────────────────────
     function renderAll() {
       const app = document.getElementById('app');
-      app.innerHTML = renderHeader() + (currentView === 'groups' ? renderGroups() : renderNumeric());
-      document.getElementById('btn-numeric').className = `toggle-btn toggle-btn--${currentView === 'numeric' ? 'active' : 'inactive'}`;
-      document.getElementById('btn-groups').className  = `toggle-btn toggle-btn--${currentView === 'groups'  ? 'active' : 'inactive'}`;
+      app.innerHTML = renderHeader() +
+        (currentView === 'groups'   ? renderGroups() :
+         currentView === 'wishlist' ? renderShoppingList() :
+         renderNumeric());
+      document.getElementById('btn-numeric').className  = `toggle-btn toggle-btn--${currentView === 'numeric'  ? 'active' : 'inactive'}`;
+      document.getElementById('btn-groups').className   = `toggle-btn toggle-btn--${currentView === 'groups'   ? 'active' : 'inactive'}`;
+      document.getElementById('btn-wishlist').className = `toggle-btn toggle-btn--${currentView === 'wishlist' ? 'active' : 'inactive'}`;
     }
 
     renderAll();
