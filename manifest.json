@@ -1,7 +1,7 @@
 {
-  "name": "Polychromos",
-  "short_name": "Polychromos",
-  "description": "Meine Faber-Castell Polychromos Stiftsammlung",
+  "name": "Colortracker",
+  "short_name": "Colortracker",
+  "description": "Meine Stift- und Markersammlung",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",

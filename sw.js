@@ -1,4 +1,4 @@
-const CACHE = 'polychromos-v1';
+const CACHE = 'colortracker-v1';
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
