@@ -58,12 +58,23 @@
       { code:"Y260",  name:"Yellow Dahlia",     color:"#FFC107" },
       { code:"Y270",  name:"Pale Ocre",         color:"#E8D5A3" },
       // ── Orange (YR) ───────────────────────────────────────────────────────
-      { code:"YR1",   name:"Dark Yellow",       color:"#F9A825" },
+      { code:"YR1",   name:"Dark Yellow",        color:"#F9A825" },
       { code:"YR2",   name:"Marigold",          color:"#FF8F00" },
       { code:"YR3",   name:"Orange",            color:"#FF6D00" },
       { code:"YR4",   name:"Salmon Pink",       color:"#FF8A65" },
-      { code:"YR5",   name:"Terra Cotta",       color:"#BF5D3C" },
-      { code:"YR33",  name:"Melon Yellow",      color:"#FFA040" },
+      { code:"YR5",   name:"Terra Cotta",        color:"#BF5D3C" },
+      { code:"YR6",   name:"Dark Orange",        color:"#D4602A" },
+      { code:"YR7",   name:"Burnt Orange",       color:"#C05025" },
+      { code:"YR8",   name:"Red Orange",         color:"#B04020" },
+      { code:"YR9",   name:"Dark Red Orange",    color:"#9A3018" },
+      { code:"YR10",  name:"Deep Red Orange",    color:"#8A2A14" },
+      { code:"YR20",  name:"Light Peach",        color:"#FFB870" },
+      { code:"YR33",  name:"Melon Yellow",       color:"#FFA040" },
+      { code:"YR34",  name:"Melon Orange",       color:"#FF9035" },
+      { code:"YR92",  name:"Salmon",             color:"#E07060" },
+      { code:"YR95",  name:"Coral",              color:"#D06050" },
+      { code:"YR107", name:"Brick Orange",       color:"#C04828" },
+      { code:"YR205", name:"Golden Orange",      color:"#F0A050" },
       { code:"YR030", name:"Carmine Red",       color:"#E53935" },
       { code:"YR070", name:"Light Orange",      color:"#FFB347" },
       { code:"YR090", name:"Peach Pie",         color:"#FFAD96" },
@@ -121,8 +132,11 @@
       { code:"R22",   name:"Dark Blush",        color:"#D4788C" },
       { code:"R23",   name:"Rose Pink",         color:"#E88CA0" },
       { code:"R24",   name:"Dark Violet Light", color:"#5E35B1" },
-      { code:"R25",   name:"Pale Blue Violet",  color:"#B39DDB" },
-      { code:"R29",   name:"Pear Color",        color:"#D4B080" },
+      { code:"R25",   name:"Pale Blue Violet",   color:"#B39DDB" },
+      { code:"R26",   name:"Soft Rose",          color:"#E899B0" },
+      { code:"R27",   name:"Dusty Rose",         color:"#E090A8" },
+      { code:"R28",   name:"Rose Pink",          color:"#D880A0" },
+      { code:"R29",   name:"Pear Color",         color:"#D4B080" },
       { code:"R050",  name:"Chocolate Pink",    color:"#E8A0B0" },
       { code:"R070",  name:"Agate",             color:"#8D6E8D" },
       { code:"R080",  name:"Pale Cherry Pink",  color:"#FFAEC0" },
@@ -264,6 +278,7 @@
       { code:"GY8",   name:"Petits Pois",       color:"#7CB342" },
       { code:"GY42",  name:"Bronze Green",      color:"#558B2F" },
       { code:"GY43",  name:"Deep Olive Green",  color:"#33691E" },
+      { code:"GY163", name:"Sage Green",         color:"#7A9A50" },
       { code:"GY172", name:"Spectrum Green",    color:"#69F0AE" },
       { code:"GY173", name:"Dim Green",         color:"#388E3C" },
       // ── Erde & Braun (E, BR) ──────────────────────────────────────────────
@@ -301,7 +316,8 @@
       { code:"BR3",   name:"Rose Beige",        color:"#C4987A" },
       { code:"BR208", name:"Black Brown",       color:"#2A1A0A" },
       // ── Warmgrau (WG) ─────────────────────────────────────────────────────
-      { code:"WG01",  name:"Warm Grey 1",       color:"#F5F0EC" },
+      { code:"WF09",  name:"Warm French Grey 9", color:"#8A7E78" },
+      { code:"WG01",  name:"Warm Grey 1",        color:"#F5F0EC" },
       { code:"WG3",   name:"Warm Grey 3",       color:"#D8D0C8" },
       { code:"WG4",   name:"Warm Grey 4",       color:"#C8C0B8" },
       { code:"WG050", name:"Warm Grey 05",      color:"#EAE4DC" },
@@ -330,11 +346,13 @@
       { code:"RG050",  name:"Red Grey 05",      color:"#D4B8B0" },
       { code:"RG080",  name:"Red Grey 08",      color:"#B89090" },
       { code:"RG110",  name:"Red Grey 11",      color:"#987878" },
-      { code:"RG120",  name:"Red Grey 12",      color:"#886870" },
+      { code:"RG101",  name:"Red Grey 101",      color:"#A07878" },
+      { code:"RG120",  name:"Red Grey 12",       color:"#886870" },
       { code:"RG150",  name:"Red Grey 150",     color:"#706068" },
       { code:"GG1",    name:"Green Grey 1",     color:"#D8DDD0" },
       { code:"GG3",    name:"Green Grey 3",     color:"#B8C0B0" },
       { code:"GG5",    name:"Green Grey 5",     color:"#98A890" },
+      { code:"GG6",    name:"Green Grey 6",     color:"#878F7E" },
       { code:"GG9",    name:"Green Grey 9",     color:"#687060" },
       { code:"GG020",  name:"Green Grey 02",    color:"#E0E8D8" },
       { code:"GG040",  name:"Light Jade Green Grey",color:"#C8D8C0" },
@@ -456,7 +474,18 @@
         if (!r.ok) throw new Error();
         const data = await r.json();
         const content = data.files[GIST_FILE]?.content;
-        if (content) { state = JSON.parse(content); saveState(); }
+        if (content) {
+          const gistState = JSON.parse(content);
+          const gistOwned = Object.values(gistState).filter(v => v?.owned).length;
+          const localOwned = Object.values(state).filter(v => v?.owned).length;
+          if (gistOwned === 0 && localOwned > 0) {
+            // Gist ist leer, lokal haben wir Daten (z.B. Prefill) → hochladen
+            await saveToGist();
+          } else {
+            state = gistState;
+            saveState();
+          }
+        }
         syncStatus = 'synced';
       } catch(e) {
         syncStatus = 'error';
@@ -557,16 +586,16 @@
 
     const COLOR_GROUPS = [
       { label: "Gelb (Y)",         codes: ["Y1","Y2","Y3","Y4","Y5","Y6","Y7","Y8","Y9","Y10","Y11","Y12","Y13","Y010","Y030","Y040","Y050","Y070","Y080","Y110","Y120","Y121","Y130","Y140","Y180","Y210","Y230","Y250","Y260","Y270"] },
-      { label: "Orange (YR)",       codes: ["YR1","YR2","YR3","YR4","YR5","YR33","YR030","YR070","YR090","YR110","YR170","YR172","YR180","YR190","YR220","YR240","YR250","YR260"] },
-      { label: "Rot & Pink",        codes: ["RV010","RV030","RV070","RV080","RV100","RV130","RV160","RV180","RV200","RV240","RV250","RV260","RV270","RV280","RV300","RV320","RV330","RV350","RP1","RP6","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13","R14","R15","R16","R17","R18","R19","R20","R21","R22","R23","R24","R25","R29","R050","R070","R080","R110","R120","R150","R160","R170","R180","R190","R200","R230","R240","R242","R250","R270","R280","R282","R284","R290","R340","R350"] },
+      { label: "Orange (YR)",       codes: ["YR1","YR2","YR3","YR4","YR5","YR6","YR7","YR8","YR9","YR10","YR20","YR33","YR34","YR92","YR95","YR107","YR205","YR030","YR070","YR090","YR110","YR170","YR172","YR180","YR190","YR220","YR240","YR250","YR260"] },
+      { label: "Rot & Pink",        codes: ["RV010","RV030","RV070","RV080","RV100","RV130","RV160","RV180","RV200","RV240","RV250","RV260","RV270","RV280","RV300","RV320","RV330","RV350","RP1","RP6","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13","R14","R15","R16","R17","R18","R19","R20","R21","R22","R23","R24","R25","R26","R27","R28","R29","R050","R070","R080","R110","R120","R150","R160","R170","R180","R190","R200","R230","R240","R242","R250","R270","R280","R282","R284","R290","R340","R350"] },
       { label: "Violett & Lila",    codes: ["P1","P2","P3","P4","P5","V020","V030","V050","V060","V070","V080","V150","V160","V210","V230","V250","V270","V320","V322","V330","V340","V370","V390","V450"] },
       { label: "Blau",              codes: ["B030","B050","B070","B080","B090","B110","B120","B140","B180","B190","B220","B250","B260","B270","B290","B340","B350","B380","B440","B64","PB1","PB2","PB3","PB4","PB5","PB6","PB7","PB8","PB9","PB10","PB11"] },
       { label: "Blaugrün & Türkis", codes: ["BG1","BG2","BG3","BG4","BG5","BG6","BG7","BG8","BG9","BG68"] },
-      { label: "Grün",              codes: ["G1","G2","G3","G4","G5","G6","G7","G8","G9","G020","G030","G050","G060","G070","G080","G110","G120","G130","G140","G170","G190","G220","G240","G260","G270","G300","G320","G322","G324","G326","G330","G340","G360","G390","G410","G420","G440","G470","G490","G500","GY1","GY2","GY3","GY4","GY5","GY6","GY7","GY8","GY42","GY43","GY172","GY173"] },
+      { label: "Grün",              codes: ["G1","G2","G3","G4","G5","G6","G7","G8","G9","G020","G030","G050","G060","G070","G080","G110","G120","G130","G140","G170","G190","G220","G240","G260","G270","G300","G320","G322","G324","G326","G330","G340","G360","G390","G410","G420","G440","G470","G490","G500","GY1","GY2","GY3","GY4","GY5","GY6","GY7","GY8","GY42","GY43","GY163","GY172","GY173"] },
       { label: "Erde & Braun",      codes: ["E010","E030","E050","E060","E080","E090","E110","E120","E130","E160","E170","E210","E220","E240","E260","E280","E300","E310","E370","E380","E400","E430","E432","E434","E440","E450","E460","E470","E490","BR1","BR2","BR3","BR208"] },
-      { label: "Warmgrau",          codes: ["WG01","WG3","WG4","WG050","WG070","WG090","WG09","WG130"] },
+      { label: "Warmgrau",          codes: ["WF09","WG01","WG3","WG4","WG050","WG070","WG090","WG09","WG130"] },
       { label: "Kaltgrau",          codes: ["CG2","CG5","CGII00","CGII04","CGII07","CGII08","CGII09","CG020","CG030","CG050","CG070","NG03","NG06","NG07","NG09"] },
-      { label: "Spezialgrau",       codes: ["RG030","RG050","RG080","RG110","RG120","RG150","GG1","GG3","GG5","GG9","GG020","GG040","GG060","GG110","YG040","YG080","MG020","MG030","MG060","MG100","BGII03","BGII05","BGII09","BG050","BG060","BG070"] },
+      { label: "Spezialgrau",       codes: ["RG030","RG050","RG080","RG101","RG110","RG120","RG150","GG1","GG3","GG5","GG6","GG9","GG020","GG040","GG060","GG110","YG040","YG080","MG020","MG030","MG060","MG100","BGII03","BGII05","BGII09","BG050","BG060","BG070"] },
       { label: "Fluoreszierend",    codes: ["FY010","FY020","FY030","FY050"] },
       { label: "Schwarz",           codes: ["120"] },
     ];
