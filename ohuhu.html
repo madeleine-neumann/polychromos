@@ -288,6 +288,7 @@
             <button id="btn-numeric"  class="toggle-btn" onclick="setView('numeric')">Nummerisch</button>
             <button id="btn-groups"   class="toggle-btn" onclick="setView('groups')">Farbgruppen</button>
             <button id="btn-wishlist" class="toggle-btn" onclick="setView('wishlist')">Einkaufsliste${wishlistCount() ? ` (${wishlistCount()})` : ''}</button>
+            <button id="btn-table"    class="toggle-btn" onclick="setView('table')">Tabelle</button>
           </div>
         </div>`;
     }
@@ -371,15 +372,48 @@
         ${refills.length ? `<h2 class="group-heading" style="margin-top:24px">Nachfüller</h2><div class="shopping-list">${renderItems(refills, 'toggleRefillCart')}</div>` : ''}`;
     }
 
+    const ICON_CHECK = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+    function renderTable() {
+      return `<table class="data-table">
+        <thead><tr>
+          <th></th>
+          <th>Code</th>
+          <th>Name</th>
+          <th data-tooltip="Besessen">` + ICON_CHECK + `</th>
+          <th data-tooltip="Nachfüller vorhanden">` + ICON_REFILL_FULL + `</th>
+          <th data-tooltip="Marker kaufen">` + ICON_CART + `</th>
+          <th data-tooltip="Nachfüller kaufen">` + ICON_CART + `+</th>
+        </tr></thead>
+        <tbody>${MARKERS.map(m => {
+          const owned      = isOwned(m.code);
+          const refill     = isRefill(m.code);
+          const wishlist   = isWishlist(m.code);
+          const refillCart = isRefillCart(m.code);
+          return `<tr>
+            <td><div class="table-swatch" style="background:${m.color}"></div></td>
+            <td>${m.code}</td>
+            <td>${m.name}</td>
+            <td><button class="table-icon-btn${owned ? ' table-icon-btn--active' : ''}" onclick="toggleOwned('${m.code}')" data-tooltip="${owned ? 'Besessen' : 'Nicht besessen'}">${ICON_CHECK}</button></td>
+            <td><button class="table-icon-btn${refill ? ' table-icon-btn--active' : ''}" onclick="toggleRefill('${m.code}')" data-tooltip="${refill ? 'Nachfüller vorhanden' : 'Kein Nachfüller'}">${ICON_REFILL_FULL}</button></td>
+            <td><button class="table-icon-btn${wishlist ? ' table-icon-btn--green' : ''}" onclick="toggleWishlist('${m.code}')" data-tooltip="${wishlist ? 'Auf der Einkaufsliste' : 'Zur Einkaufsliste'}">${ICON_CART}</button></td>
+            <td><button class="table-icon-btn${refillCart ? ' table-icon-btn--green' : ''}" onclick="toggleRefillCart('${m.code}')" data-tooltip="${refillCart ? 'Nachfüller auf Liste' : 'Nachfüller kaufen'}">${ICON_REFILL_FULL}</button></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>`;
+    }
+
     function renderAll() {
       const app = document.getElementById('app');
       app.innerHTML = renderHeader() +
         (currentView === 'groups'   ? renderGroups() :
          currentView === 'wishlist' ? renderShoppingList() :
+         currentView === 'table'    ? renderTable() :
          renderNumeric());
       document.getElementById('btn-numeric').className  = `toggle-btn toggle-btn--${currentView === 'numeric'  ? 'active' : 'inactive'}`;
       document.getElementById('btn-groups').className   = `toggle-btn toggle-btn--${currentView === 'groups'   ? 'active' : 'inactive'}`;
       document.getElementById('btn-wishlist').className = `toggle-btn toggle-btn--${currentView === 'wishlist' ? 'active' : 'inactive'}`;
+      document.getElementById('btn-table').className    = `toggle-btn toggle-btn--${currentView === 'table'    ? 'active' : 'inactive'}`;
     }
 
     renderAll();

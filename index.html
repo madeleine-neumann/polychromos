@@ -270,6 +270,7 @@
             <button id="btn-numeric"  class="toggle-btn" onclick="setView('numeric')">Nummerisch</button>
             <button id="btn-groups"   class="toggle-btn" onclick="setView('groups')">Farbgruppen</button>
             <button id="btn-wishlist" class="toggle-btn" onclick="setView('wishlist')">Einkaufsliste${wishlistCount() ? ` (${wishlistCount()})` : ''}</button>
+            <button id="btn-table"    class="toggle-btn" onclick="setView('table')">Tabelle</button>
           </div>
         </div>`;
     }
@@ -330,16 +331,48 @@
         </div>`).join('')}</div>`;
     }
 
+    const ICON_CHECK = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+    function renderTable() {
+      return `<table class="data-table">
+        <thead><tr>
+          <th></th>
+          <th>Nr.</th>
+          <th>Name</th>
+          <th>Lichtfestigkeit</th>
+          <th data-tooltip="Besessen">` + ICON_CHECK + `</th>
+          <th data-tooltip="Einkaufsliste">` + ICON_CART + `</th>
+          <th>Ohuhu</th>
+        </tr></thead>
+        <tbody>${PENCILS.map(p => {
+          const owned    = isOwned(p.nr);
+          const wishlist = isWishlist(p.nr);
+          const ohuhu    = getOhuhu(p.nr);
+          return `<tr>
+            <td><div class="table-swatch" style="background:${p.color}"></div></td>
+            <td>${p.nr}</td>
+            <td>${p.name}</td>
+            <td class="table-lf">${p.lf}</td>
+            <td><button class="table-icon-btn${owned ? ' table-icon-btn--active' : ''}" onclick="toggleOwned(${p.nr})" data-tooltip="${owned ? 'Besessen' : 'Nicht besessen'}">${ICON_CHECK}</button></td>
+            <td><button class="table-icon-btn${wishlist ? ' table-icon-btn--green' : ''}" onclick="toggleWishlist(${p.nr})" data-tooltip="${wishlist ? 'Auf der Einkaufsliste' : 'Zur Einkaufsliste hinzufügen'}">${ICON_CART}</button></td>
+            <td style="color:var(--c-accent);font-size:12px">${ohuhu || '—'}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>`;
+    }
+
     // ── Render: All ───────────────────────────────────────────────────────────
     function renderAll() {
       const app = document.getElementById('app');
       app.innerHTML = renderHeader() +
         (currentView === 'groups'   ? renderGroups() :
          currentView === 'wishlist' ? renderShoppingList() :
+         currentView === 'table'    ? renderTable() :
          renderNumeric());
       document.getElementById('btn-numeric').className  = `toggle-btn toggle-btn--${currentView === 'numeric'  ? 'active' : 'inactive'}`;
       document.getElementById('btn-groups').className   = `toggle-btn toggle-btn--${currentView === 'groups'   ? 'active' : 'inactive'}`;
       document.getElementById('btn-wishlist').className = `toggle-btn toggle-btn--${currentView === 'wishlist' ? 'active' : 'inactive'}`;
+      document.getElementById('btn-table').className    = `toggle-btn toggle-btn--${currentView === 'table'    ? 'active' : 'inactive'}`;
     }
 
     renderAll();
