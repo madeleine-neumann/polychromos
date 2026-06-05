@@ -23,6 +23,12 @@
   </style>
 </head>
 <body class="min-h-screen" style="background: linear-gradient(135deg, #fdf4ff 0%, #f0f0ff 50%, #fce7f3 100%);">
+  <nav style="background:white;border-bottom:2px solid #f3e8ff;position:sticky;top:0;z-index:50;">
+    <div class="max-w-6xl mx-auto px-4 flex gap-1 py-2">
+      <a href="./index.html" style="padding:6px 16px;border-radius:20px;font-size:13px;font-weight:800;text-decoration:none;background:#f3e8ff;color:#7e22ce;">🎨 Polychromos</a>
+      <a href="./ohuhu.html" style="padding:6px 16px;border-radius:20px;font-size:13px;font-weight:800;text-decoration:none;background:linear-gradient(90deg,#c026d3,#7c3aed);color:white;box-shadow:0 2px 8px rgba(168,85,247,0.35);">🖊 Ohuhu</a>
+    </div>
+  </nav>
   <div id="app" class="max-w-6xl mx-auto px-4 py-8" style="padding-bottom: env(safe-area-inset-bottom, 24px);"></div>
 
   <script>
@@ -520,12 +526,9 @@
       return `
         <div class="mb-8">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;gap:12px;">
-            <div>
-              <h1 class="text-4xl font-black leading-tight" style="background: linear-gradient(90deg, #c026d3, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-                🖊 Ohuhu Honolulu
-              </h1>
-              <a href="./index.html" style="font-size:11px;font-weight:700;color:#a855f7;text-decoration:none;">← Polychromos</a>
-            </div>
+            <h1 class="text-4xl font-black leading-tight" style="background: linear-gradient(90deg, #c026d3, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+              🖊 Ohuhu Honolulu
+            </h1>
             <div style="padding-top:6px;flex-shrink:0;">${renderAuthBar()}</div>
           </div>
           <p class="font-bold mb-4 text-sm mt-2" style="color: #a855f7;">Meine Markersammlung · 320 Farben</p>
