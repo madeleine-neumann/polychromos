@@ -23,10 +23,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Inject Google Client ID
-        run: |
-          sed -i "s|DEINE_GOOGLE_CLIENT_ID_HIER.apps.googleusercontent.com|${{ secrets.GOOGLE_CLIENT_ID }}|g" index.html
-
       - uses: actions/configure-pages@v4
 
       - uses: actions/upload-pages-artifact@v3

@@ -16,11 +16,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
-  <!-- Google APIs -->
-  <script src="https://apis.google.com/js/api.js" onload="gapiLoaded()" defer></script>
-  <script src="https://accounts.google.com/gsi/client" onload="gisLoaded()" defer></script>
-
-  <style>
+<style>
     body { font-family: 'Nunito', sans-serif; }
     input::placeholder { color: rgba(255,255,255,0.55); }
     input[type="text"] { caret-color: white; }
@@ -157,13 +153,6 @@
       { nr: 283, name: "Siena gebrannt",          lf: "★★★", color: "#895A47" },
     ];
 
-    // ── Config ────────────────────────────────────────────────────────────────
-    // Google Cloud → APIs & Services → Credentials → OAuth 2.0 Client ID
-    // Authorized JS origins: https://madeleine-neumann.github.io
-    const CLIENT_ID = 'DEINE_GOOGLE_CLIENT_ID_HIER.apps.googleusercontent.com';
-    const SCOPES = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile';
-    const FILE_NAME = 'polychromos_data.json';
-
     // ── Helpers ───────────────────────────────────────────────────────────────
     function darken(hex, amount = 0.72) {
       const r = parseInt(hex.slice(1,3), 16);
@@ -195,7 +184,7 @@
       state[nr] = state[nr] || {};
       state[nr].owned = !state[nr].owned;
       saveState();
-      scheduleDriveSave();
+      scheduleGistSave();
       renderAll();
     }
 
@@ -203,7 +192,7 @@
       state[nr] = state[nr] || {};
       state[nr].ohuhu = value.trim();
       saveState();
-      scheduleDriveSave();
+      scheduleGistSave();
     }
 
     function setView(view) {
@@ -212,158 +201,123 @@
       renderAll();
     }
 
-    // ── Auth & Drive ──────────────────────────────────────────────────────────
-    let tokenClient, gapiInited = false, gisInited = false;
-    let currentUser = null;   // { name, picture }
-    let driveFileId = null;
-    let syncStatus = 'offline'; // 'offline' | 'syncing' | 'synced' | 'error'
-    let driveSaveTimer = null;
+    // ── GitHub Gist Sync ──────────────────────────────────────────────────────
+    const TOKEN_KEY   = 'polychromos_gh_token';
+    const GIST_ID_KEY = 'polychromos_gist_id';
+    const GIST_FILE   = 'polychromos_data.json';
+    const GH_API      = 'https://api.github.com';
 
-    function gapiLoaded() {
-      gapi.load('client', async () => {
-        await gapi.client.init({});
-        gapiInited = true;
-        checkApisReady();
-      });
+    let githubToken = localStorage.getItem(TOKEN_KEY) || '';
+    let gistId      = localStorage.getItem(GIST_ID_KEY) || '';
+    let syncStatus  = 'idle'; // 'idle' | 'syncing' | 'synced' | 'error'
+    let syncTimer   = null;
+
+    function ghHeaders() {
+      return { Authorization: `Bearer ${githubToken}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' };
     }
 
-    function gisLoaded() {
-      if (CLIENT_ID.startsWith('DEINE')) { gisInited = true; checkApisReady(); return; }
-      tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: SCOPES,
-        callback: handleTokenResponse,
-      });
-      gisInited = true;
-      checkApisReady();
-    }
-
-    function checkApisReady() {
-      if (gapiInited && gisInited) renderAll();
-    }
-
-    async function handleTokenResponse(resp) {
-      if (resp.error) { syncStatus = 'error'; renderAll(); return; }
-      gapi.client.setToken(resp);
-      currentUser = await fetchUserInfo(resp.access_token);
-      await loadFromDrive();
+    async function connectGist() {
+      const input = document.getElementById('token-input');
+      const token = input?.value.trim();
+      if (!token) return;
+      githubToken = token;
+      localStorage.setItem(TOKEN_KEY, token);
+      gistId = ''; localStorage.removeItem(GIST_ID_KEY);
+      await loadFromGist();
       renderAll();
     }
 
-    function signIn() {
-      if (!tokenClient) return alert('CLIENT_ID nicht konfiguriert. Siehe Kommentar im Quellcode.');
-      tokenClient.requestAccessToken({ prompt: currentUser ? '' : 'select_account' });
-    }
-
-    function signOut() {
-      const token = gapi.client.getToken();
-      if (token) { google.accounts.oauth2.revoke(token.access_token, () => {}); gapi.client.setToken(''); }
-      currentUser = null; driveFileId = null; syncStatus = 'offline';
+    function disconnectGist() {
+      githubToken = ''; localStorage.removeItem(TOKEN_KEY);
+      gistId = '';     localStorage.removeItem(GIST_ID_KEY);
+      syncStatus = 'idle';
       renderAll();
     }
 
-    async function fetchUserInfo(token) {
-      try {
-        const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${token}` }
+    async function ensureGistId() {
+      if (gistId) return;
+      const r = await fetch(`${GH_API}/gists?per_page=100`, { headers: ghHeaders() });
+      if (!r.ok) throw new Error('Token ungültig');
+      const gists = await r.json();
+      const found = gists.find(g => g.files[GIST_FILE]);
+      if (found) {
+        gistId = found.id;
+      } else {
+        const cr = await fetch(`${GH_API}/gists`, {
+          method: 'POST', headers: ghHeaders(),
+          body: JSON.stringify({ description: 'Polychromos Stiftsammlung', public: false,
+            files: { [GIST_FILE]: { content: JSON.stringify(state) } } })
         });
-        return await r.json();
-      } catch { return null; }
+        if (!cr.ok) throw new Error('Gist erstellen fehlgeschlagen');
+        gistId = (await cr.json()).id;
+      }
+      localStorage.setItem(GIST_ID_KEY, gistId);
     }
 
-    async function loadFromDrive() {
+    async function loadFromGist() {
+      if (!githubToken) return;
       syncStatus = 'syncing'; updateSyncUI();
       try {
-        const list = await gapi.client.request({
-          path: 'https://www.googleapis.com/drive/v3/files',
-          params: { spaces: 'appDataFolder', q: `name='${FILE_NAME}'`, fields: 'files(id)', pageSize: 1 }
-        });
-        const files = list.result.files || [];
-        if (files.length > 0) {
-          driveFileId = files[0].id;
-          const res = await gapi.client.request({
-            path: `https://www.googleapis.com/drive/v3/files/${driveFileId}`,
-            params: { alt: 'media' }
-          });
-          state = typeof res.result === 'object' && res.result ? res.result : JSON.parse(res.body);
-          saveState();
-        } else {
-          await saveToDriveNow();
-        }
+        await ensureGistId();
+        const r = await fetch(`${GH_API}/gists/${gistId}`, { headers: ghHeaders() });
+        if (!r.ok) throw new Error();
+        const data = await r.json();
+        const content = data.files[GIST_FILE]?.content;
+        if (content) { state = JSON.parse(content); saveState(); }
         syncStatus = 'synced';
-      } catch(e) { console.error('Drive load:', e); syncStatus = 'error'; }
+      } catch(e) {
+        console.error('Gist load:', e);
+        syncStatus = 'error';
+        gistId = ''; localStorage.removeItem(GIST_ID_KEY);
+      }
       updateSyncUI();
     }
 
-    async function saveToDriveNow() {
-      if (!gapi.client.getToken()) return;
+    async function saveToGist() {
+      if (!githubToken) return;
       syncStatus = 'syncing'; updateSyncUI();
-      const content = JSON.stringify(state);
       try {
-        if (driveFileId) {
-          await gapi.client.request({
-            path: `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}`,
-            method: 'PATCH',
-            params: { uploadType: 'media' },
-            headers: { 'Content-Type': 'application/json' },
-            body: content,
-          });
-        } else {
-          const b = 'poly-x7f';
-          const meta = JSON.stringify({ name: FILE_NAME, parents: ['appDataFolder'] });
-          const body = `--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${content}\r\n--${b}--`;
-          const r = await gapi.client.request({
-            path: 'https://www.googleapis.com/upload/drive/v3/files',
-            method: 'POST',
-            params: { uploadType: 'multipart' },
-            headers: { 'Content-Type': `multipart/related; boundary="${b}"` },
-            body,
-          });
-          driveFileId = r.result.id;
-        }
+        await ensureGistId();
+        const r = await fetch(`${GH_API}/gists/${gistId}`, {
+          method: 'PATCH', headers: ghHeaders(),
+          body: JSON.stringify({ files: { [GIST_FILE]: { content: JSON.stringify(state) } } })
+        });
+        if (!r.ok) throw new Error();
         syncStatus = 'synced';
-      } catch(e) { console.error('Drive save:', e); syncStatus = 'error'; }
+      } catch(e) { console.error('Gist save:', e); syncStatus = 'error'; }
       updateSyncUI();
     }
 
-    function scheduleDriveSave() {
-      clearTimeout(driveSaveTimer);
-      driveSaveTimer = setTimeout(saveToDriveNow, 1500);
+    function scheduleGistSave() {
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(saveToGist, 1500);
     }
 
     function updateSyncUI() {
       const el = document.getElementById('sync-status');
-      if (!el || !currentUser) return;
-      const map = { syncing: '⏳', synced: '☁ gespeichert', error: '⚠ Fehler', offline: '' };
+      if (!el) return;
+      const map = { idle: '', syncing: '⏳', synced: '☁ gespeichert', error: '⚠ Fehler' };
       el.textContent = map[syncStatus] || '';
     }
 
+    if (githubToken) loadFromGist().then(() => renderAll());
+
     // ── Render: Header ────────────────────────────────────────────────────────
     function renderAuthBar() {
-      if (!gapiInited || !gisInited) return '';
-      if (CLIENT_ID.startsWith('DEINE')) {
-        return `<div style="font-size:11px;color:#d97706;background:#fef3c7;padding:4px 10px;border-radius:20px;font-weight:700;">⚠ CLIENT_ID fehlt</div>`;
-      }
-      if (!currentUser) {
+      if (githubToken) {
         return `
-          <button onclick="signIn()" style="
-            display:flex;align-items:center;gap:7px;
-            padding:7px 14px;border-radius:20px;
-            background:white;border:2px solid #e9d5ff;
-            font-size:12px;font-weight:800;color:#7c3aed;
-            cursor:pointer;transition:box-shadow 0.2s;
-            box-shadow:0 1px 4px rgba(124,58,237,0.1);
-          " onmouseover="this.style.boxShadow='0 3px 12px rgba(124,58,237,0.25)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(124,58,237,0.1)'">
-            <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-            Mit Google anmelden
-          </button>`;
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+            <span id="sync-status" style="font-size:11px;font-weight:700;color:#9333ea;">${{idle:'',syncing:'⏳',synced:'☁ gespeichert',error:'⚠ Fehler'}[syncStatus]||''}</span>
+            <span style="font-size:11px;font-weight:800;background:#f0fdf4;color:#16a34a;padding:3px 10px;border-radius:20px;">✓ GitHub</span>
+            <button onclick="disconnectGist()" style="font-size:11px;font-weight:800;color:#9333ea;background:#f3e8ff;border:none;padding:4px 10px;border-radius:20px;cursor:pointer;">Trennen</button>
+          </div>`;
       }
-      const syncMap = { syncing: '⏳', synced: '☁', error: '⚠', offline: '' };
       return `
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span id="sync-status" style="font-size:11px;font-weight:700;color:#9333ea;">${syncMap[syncStatus] || ''} ${syncStatus === 'synced' ? 'gespeichert' : syncStatus === 'error' ? 'Fehler' : syncStatus === 'syncing' ? '…' : ''}</span>
-          <img src="${currentUser.picture || ''}" style="width:28px;height:28px;border-radius:50%;border:2px solid #e9d5ff;" title="${currentUser.name || ''}">
-          <button onclick="signOut()" style="font-size:11px;font-weight:800;color:#9333ea;background:#f3e8ff;border:none;padding:4px 10px;border-radius:20px;cursor:pointer;">Abmelden</button>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+          <input id="token-input" type="password" placeholder="GitHub Token"
+            style="font-size:11px;font-weight:700;font-family:'Nunito',sans-serif;padding:5px 10px;border-radius:20px;border:2px solid #e9d5ff;outline:none;color:#7c3aed;width:140px;"
+            onkeydown="if(event.key==='Enter')connectGist()">
+          <button onclick="connectGist()" style="font-size:11px;font-weight:800;color:white;background:linear-gradient(90deg,#c026d3,#7c3aed);border:none;padding:5px 12px;border-radius:20px;cursor:pointer;">Verbinden</button>
         </div>`;
     }
 
