@@ -274,6 +274,7 @@ body {
 .tile:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow-md);
+  z-index: 10;
 }
 .tile:active {
   transform: translateY(-1px);
@@ -502,6 +503,40 @@ body {
   flex-shrink: 0;
 }
 .theme-toggle:hover { opacity: 0.8; }
+
+/* ── Tooltips ─────────────────────────────────────────────────────────────── */
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 17, 40, 0.92);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Nunito', sans-serif;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 100;
+}
+[data-tooltip]:hover::after { opacity: 1; }
+
+/* top-positioned badges: tooltip below */
+.tile-cart-badge:not(.tile-cart-badge--br)[data-tooltip]::after,
+.tile-badge[data-tooltip]::after {
+  bottom: auto;
+  top: calc(100% + 6px);
+}
+
+:root[data-theme="dark"] [data-tooltip]::after {
+  background: rgba(233, 213, 255, 0.95);
+  color: #1a0a2e;
+}
 
 /* ── Scrollbar ────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {

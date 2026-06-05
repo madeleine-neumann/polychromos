@@ -281,7 +281,7 @@
       const owned    = isOwned(p.nr);
       const wishlist = isWishlist(p.nr);
 
-      const cartBadge = `<div class="tile-badge tile-badge--cart${wishlist ? ' tile-badge--cart-active' : ''}" onclick="event.stopPropagation();toggleWishlist(${p.nr})" title="${wishlist ? 'Auf der Einkaufsliste' : 'Zur Einkaufsliste hinzufügen'}">${ICON_CART}</div>`;
+      const cartBadge = `<div class="tile-badge tile-badge--cart${wishlist ? ' tile-badge--cart-active' : ''}" onclick="event.stopPropagation();toggleWishlist(${p.nr})" data-tooltip="${wishlist ? 'Auf der Einkaufsliste' : 'Zur Einkaufsliste hinzufügen'}">${ICON_CART}</div>`;
       return `<div
         class="tile${owned ? '' : ' tile--unowned'}"
         onclick="toggleOwned(${p.nr})"
