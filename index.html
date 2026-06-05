@@ -15,6 +15,8 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css">
+  <script src="./data/polychromos.js"></script>
+  <script src="./data/ohuhu.js"></script>
 </head>
 <body>
   <nav class="app-nav">
@@ -26,129 +28,6 @@
   <div id="app" class="app-inner"></div>
 
   <script>
-    // Hex-Farben basierend auf gescannten Swatches (Quelle: jennyscrayoncollection.com)
-    const PENCILS = [
-      { nr: 101, name: "Weiß",                   lf: "★★★", color: "#FFFFFF" },
-      { nr: 102, name: "Strohgelb",               lf: "★★★", color: "#FFF1B6" },
-      { nr: 103, name: "Elfenbein",               lf: "★★★", color: "#FFF4D8" },
-      { nr: 104, name: "Lichtgelb lasierend",     lf: "★★★", color: "#F3EF6F" },
-      { nr: 105, name: "Kadmiumgelb hell",        lf: "★★★", color: "#FFE73E" },
-      { nr: 106, name: "Chromgelb hell",          lf: "★★★", color: "#FFDE45" },
-      { nr: 107, name: "Kadmiumgelb",             lf: "★★★", color: "#FFD530" },
-      { nr: 108, name: "Kadmiumgelb dunkel",      lf: "★★★", color: "#FFC220" },
-      { nr: 109, name: "Chromgelb dunkel",        lf: "★★★", color: "#FAA632" },
-      { nr: 110, name: "Phthaloblau",             lf: "★★★", color: "#0B7DC2" },
-      { nr: 111, name: "Kadmiumorange",           lf: "★★★", color: "#F78F26" },
-      { nr: 112, name: "Laubgrün",                lf: "★★★", color: "#49B95C" },
-      { nr: 113, name: "Lasurorange",             lf: "★★★", color: "#F48034" },
-      { nr: 115, name: "Kadmiumorange dunkel",    lf: "★★★", color: "#F47933" },
-      { nr: 117, name: "Kadmiumrot hell",         lf: "★★★", color: "#F05544" },
-      { nr: 118, name: "Scharlachrot",            lf: "★★★", color: "#E84D47" },
-      { nr: 119, name: "Magenta hell",            lf: "★",   color: "#D786B9" },
-      { nr: 120, name: "Ultramarin",              lf: "★★★", color: "#506DB4" },
-      { nr: 121, name: "Geraniumrot hell",        lf: "★★★", color: "#EF4650" },
-      { nr: 123, name: "Fuchsia",                 lf: "★★",  color: "#EF4C86" },
-      { nr: 124, name: "Karminrosé",              lf: "★★★", color: "#E95C72" },
-      { nr: 125, name: "Purpurrosa mittel",       lf: "★★",  color: "#C3408B" },
-      { nr: 126, name: "Permanentkarmin",         lf: "★★★", color: "#D82C4A" },
-      { nr: 127, name: "Karminrosa",              lf: "★★",  color: "#E85274" },
-      { nr: 128, name: "Purpurrosa hell",         lf: "★★",  color: "#F06D98" },
-      { nr: 129, name: "Krapplack rosa",          lf: "★★",  color: "#F389B2" },
-      { nr: 130, name: "Lachs",                   lf: "★★★", color: "#F69892" },
-      { nr: 131, name: "Koralle",                 lf: "★★★", color: "#F69C99" },
-      { nr: 132, name: "Beigerot",                lf: "★★★", color: "#D48A6A" },
-      { nr: 133, name: "Magenta",                 lf: "★★★", color: "#934E67" },
-      { nr: 134, name: "Karmoisin",               lf: "★★",  color: "#A14D9D" },
-      { nr: 135, name: "Rotviolett hell",         lf: "★★",  color: "#AB68A1" },
-      { nr: 136, name: "Purpurviolett",           lf: "★★",  color: "#7358A0" },
-      { nr: 137, name: "Blauviolett",             lf: "★★★", color: "#59529E" },
-      { nr: 138, name: "Violett",                 lf: "★★",  color: "#8A6BAF" },
-      { nr: 140, name: "Ultramarin hell",         lf: "★★★", color: "#659AD2" },
-      { nr: 141, name: "Delfterblau",             lf: "★★★", color: "#484F9F" },
-      { nr: 142, name: "Krapplack",               lf: "★★★", color: "#CD3F5C" },
-      { nr: 143, name: "Kobaltblau",              lf: "★★★", color: "#056AB5" },
-      { nr: 144, name: "Kobaltblau grünlich",     lf: "★★★", color: "#156DB6" },
-      { nr: 145, name: "Phthaloblau hell",        lf: "★★",  color: "#43ACE1" },
-      { nr: 146, name: "Smalteblau",              lf: "★★★", color: "#86B2DF" },
-      { nr: 149, name: "Türkis bläulich",         lf: "★★★", color: "#0077A2" },
-      { nr: 151, name: "Helioblau rötl.",         lf: "★★★", color: "#1770B8" },
-      { nr: 152, name: "Phthaloblau mittel",      lf: "★★★", color: "#309CD6" },
-      { nr: 153, name: "Kobalttürkis",            lf: "★★★", color: "#0082A2" },
-      { nr: 154, name: "Kobalttürkis hell",       lf: "★★",  color: "#66CBDA" },
-      { nr: 155, name: "Heliotürkis",             lf: "★★★", color: "#087E90" },
-      { nr: 156, name: "Kobaltgrün",              lf: "★★★", color: "#01BABD" },
-      { nr: 157, name: "Indigo dunkel",           lf: "★★★", color: "#3E4A5B" },
-      { nr: 158, name: "Kobaltgrün tief",         lf: "★★★", color: "#146B60" },
-      { nr: 159, name: "Hookers grün",            lf: "★★★", color: "#0B7764" },
-      { nr: 160, name: "Manganviolett",           lf: "★",   color: "#9A69AD" },
-      { nr: 161, name: "Phthalogrün",             lf: "★★★", color: "#00B091" },
-      { nr: 162, name: "Phthalogrün hell",        lf: "★★",  color: "#38BB8F" },
-      { nr: 163, name: "Smaragdgrün",             lf: "★★★", color: "#0CB074" },
-      { nr: 165, name: "Wacholdergrün",           lf: "★★★", color: "#44694D" },
-      { nr: 166, name: "Grasgrün",                lf: "★★★", color: "#76C25F" },
-      { nr: 167, name: "Permanentgrün oliv",      lf: "★★★", color: "#4C7A4F" },
-      { nr: 168, name: "Grünerde gelblich",       lf: "★★★", color: "#82A255" },
-      { nr: 169, name: "Caput mortuum",           lf: "★★★", color: "#9A5D58" },
-      { nr: 170, name: "Maigrün",                 lf: "★★★", color: "#9FBB56" },
-      { nr: 171, name: "Lichtgrün",               lf: "★★★", color: "#A0D185" },
-      { nr: 172, name: "Grünerde",                lf: "★★★", color: "#738C70" },
-      { nr: 173, name: "Olivgrün gelblich",       lf: "★★★", color: "#5B5D44" },
-      { nr: 174, name: "Chromoxydgrün stumpf",    lf: "★★★", color: "#65714F" },
-      { nr: 175, name: "Sepia dunkel",            lf: "★★★", color: "#474948" },
-      { nr: 176, name: "Van-Dyck-Braun",          lf: "★★★", color: "#6C5954" },
-      { nr: 177, name: "Walnussbraun",            lf: "★★★", color: "#5D4F48" },
-      { nr: 178, name: "Nougat",                  lf: "★★★", color: "#927C6B" },
-      { nr: 179, name: "Bister",                  lf: "★★",  color: "#7C604C" },
-      { nr: 180, name: "Umbra natur",             lf: "★★★", color: "#9A734A" },
-      { nr: 181, name: "Paynesgrau",              lf: "★★★", color: "#484E55" },
-      { nr: 182, name: "Braunocker",              lf: "★★★", color: "#C4925D" },
-      { nr: 183, name: "Lichter Ocker",           lf: "★★",  color: "#FCBC5F" },
-      { nr: 184, name: "Neapelgelb dunkel",       lf: "★★★", color: "#F5C25B" },
-      { nr: 185, name: "Neapelgelb",              lf: "★★★", color: "#F8D25A" },
-      { nr: 186, name: "Terracotta",              lf: "★★★", color: "#EC8E59" },
-      { nr: 187, name: "Ocker gebrannt",          lf: "★★★", color: "#D89763" },
-      { nr: 188, name: "Rötel",                   lf: "★★★", color: "#D77255" },
-      { nr: 189, name: "Zimtbraun",               lf: "★★★", color: "#8B5A3A" },
-      { nr: 190, name: "Venezianischrot",         lf: "★★★", color: "#9B3535" },
-      { nr: 191, name: "Pompejanischrot",         lf: "★★★", color: "#7B3535" },
-      { nr: 192, name: "Indischrot",              lf: "★★★", color: "#91474A" },
-      { nr: 193, name: "Karmin gebrannt",         lf: "★★★", color: "#AA5164" },
-      { nr: 194, name: "Rotviolett",              lf: "★★★", color: "#88496D" },
-      { nr: 199, name: "Schwarz",                 lf: "★★★", color: "#111111" },
-      { nr: 205, name: "Kadmiumgelb zitron",      lf: "★★★", color: "#EBEA64" },
-      { nr: 217, name: "Nummer",                  lf: "★★★", color: "#BC454F" },
-      { nr: 219, name: "Scharlachrot tief",       lf: "★★★", color: "#E8495E" },
-      { nr: 223, name: "Tiefrot",                 lf: "★★",  color: "#E42F44" },
-      { nr: 225, name: "Dunkelrot",               lf: "★★★", color: "#A63055" },
-      { nr: 226, name: "Alizarinkarmesin",        lf: "★★",  color: "#DF2D5D" },
-      { nr: 230, name: "Kaltgrau I",              lf: "★★★", color: "#CAD1D8" },
-      { nr: 231, name: "Kaltgrau II",             lf: "★★★", color: "#BEC4CC" },
-      { nr: 232, name: "Kaltgrau III",            lf: "★★★", color: "#ACB1B8" },
-      { nr: 233, name: "Kaltgrau IV",             lf: "★★★", color: "#8E9498" },
-      { nr: 234, name: "Kaltgrau V",              lf: "★★★", color: "#6E7176" },
-      { nr: 235, name: "Kaltgrau VI",             lf: "★★★", color: "#575758" },
-      { nr: 246, name: "Preußischblau",           lf: "★★★", color: "#126495" },
-      { nr: 247, name: "Indanthrenblau",          lf: "★★★", color: "#445E98" },
-      { nr: 249, name: "Mauve",                   lf: "★★★", color: "#6157A1" },
-      { nr: 250, name: "Gold",                    lf: "★★★", color: "#CDC08D" },
-      { nr: 251, name: "Silber",                  lf: "★★★", color: "#ABADB0" },
-      { nr: 252, name: "Kupfer",                  lf: "★★★", color: "#B09092" },
-      { nr: 263, name: "Caput mort. violett",     lf: "★★★", color: "#824E51" },
-      { nr: 264, name: "Phthalogrün dunkel",      lf: "★★★", color: "#009378" },
-      { nr: 266, name: "Permanentgrün",           lf: "★★★", color: "#278A46" },
-      { nr: 267, name: "Tannengrün",              lf: "★★★", color: "#315C48" },
-      { nr: 268, name: "Grüngold",                lf: "★★★", color: "#CA9439" },
-      { nr: 270, name: "Warmgrau I",              lf: "★★★", color: "#D9D0CE" },
-      { nr: 271, name: "Warmgrau II",             lf: "★★★", color: "#C8C1BE" },
-      { nr: 272, name: "Warmgrau III",            lf: "★★★", color: "#A8A59F" },
-      { nr: 273, name: "Warmgrau IV",             lf: "★★★", color: "#7C7E7F" },
-      { nr: 274, name: "Warmgrau V",              lf: "★★★", color: "#626060" },
-      { nr: 275, name: "Warmgrau VI",             lf: "★★★", color: "#585557" },
-      { nr: 276, name: "Chromoxydgrün feurig",    lf: "★★★", color: "#00987F" },
-      { nr: 278, name: "Chromoxydgrün",           lf: "★★★", color: "#4A614B" },
-      { nr: 280, name: "Umbra gebrannt",          lf: "★★★", color: "#685546" },
-      { nr: 283, name: "Siena gebrannt",          lf: "★★★", color: "#895A47" },
-    ];
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     function darken(hex, amount = 0.72) {
@@ -156,6 +35,26 @@
       const g = parseInt(hex.slice(3,5), 16);
       const b = parseInt(hex.slice(5,7), 16);
       return '#' + [r,g,b].map(c => Math.round(c * amount).toString(16).padStart(2,'0')).join('');
+    }
+
+    // ── Ohuhu Dropdown ────────────────────────────────────────────────────────
+    const MARKERS_BY_CODE = Object.fromEntries(MARKERS.map(m => [m.code, m]));
+
+    const OHUHU_OPTS = '<option value="">— Ohuhu —</option>' +
+      OHUHU_GROUPS.map(g => {
+        const opts = g.codes
+          .filter(c => MARKERS_BY_CODE[c])
+          .map(c => `<option value="${c}">${c} · ${MARKERS_BY_CODE[c].name}</option>`)
+          .join('');
+        return opts ? `<optgroup label="${g.label}">${opts}</optgroup>` : '';
+      }).join('');
+
+    function ohuhuSelect(nr) {
+      const val = getOhuhu(nr);
+      const opts = val
+        ? OHUHU_OPTS.replace(`value="${val}"`, `value="${val}" selected`)
+        : OHUHU_OPTS;
+      return `<select class="tile-ohuhu" onclick="event.stopPropagation()" onchange="setOhuhu(${nr},this.value)">${opts}</select>`;
     }
 
     // ── State ─────────────────────────────────────────────────────────────────
@@ -343,7 +242,6 @@
     // ── Render: Tile ──────────────────────────────────────────────────────────
     function renderTile(p) {
       const owned = isOwned(p.nr);
-      const ohuhu = getOhuhu(p.nr).replace(/"/g, '&quot;');
       const badge = owned ? `<div class="tile-badge">✓</div>` : '';
       return `<div
         class="tile${owned ? '' : ' tile--unowned'}"
@@ -353,27 +251,11 @@
         <div class="tile-code">${p.nr}</div>
         <div class="tile-name">${p.name}</div>
         ${badge}
-        <input class="tile-ohuhu" type="text" value="${ohuhu}" placeholder="Ohuhu" maxlength="6"
-          onclick="event.stopPropagation()"
-          onchange="setOhuhu(${p.nr},this.value)"
-          onkeydown="if(event.key==='Enter')this.blur()">
+        ${ohuhuSelect(p.nr)}
       </div>`;
     }
 
     // ── Render: Views ─────────────────────────────────────────────────────────
-    const COLOR_GROUPS = [
-      { label: "Gelbtöne",         nrs: [101,102,103,104,105,106,107,108,109,205] },
-      { label: "Orangetöne",        nrs: [111,113,115] },
-      { label: "Rottöne",           nrs: [117,118,121,131,219,223,225,226] },
-      { label: "Rosa & Pink",       nrs: [119,123,124,125,127,128,129,130,132] },
-      { label: "Violett & Magenta", nrs: [133,134,135,136,137,138,160,194,249,263] },
-      { label: "Blautöne",          nrs: [110,120,140,141,143,144,145,146,151,152,157,181,246,247] },
-      { label: "Türkis",            nrs: [149,153,154,155] },
-      { label: "Grüntöne",          nrs: [112,156,158,159,161,162,163,165,166,167,168,170,171,172,173,174,264,266,267,268,276,278] },
-      { label: "Braun & Erde",      nrs: [169,175,176,177,178,179,180,182,183,184,185,186,187,188,189,190,191,192,193,280,283] },
-      { label: "Grau & Schwarz",    nrs: [199,217,230,231,232,233,234,235,270,271,272,273,274,275] },
-      { label: "Metallic",          nrs: [250,251,252] },
-    ];
 
     function groupGradient(nrs, byNr) {
       const colors = nrs.map(nr => byNr[nr]?.color).filter(Boolean);
@@ -390,7 +272,7 @@
 
     function renderGroups() {
       const byNr = Object.fromEntries(PENCILS.map(p => [p.nr, p]));
-      return COLOR_GROUPS.map(g => `
+      return POLYCHROMOS_GROUPS.map(g => `
         <div class="color-group">
           <div class="group-gradient" style="background:${groupGradient(g.nrs, byNr)}"></div>
           <h2 class="group-heading">${g.label}</h2>

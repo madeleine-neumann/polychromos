@@ -343,17 +343,18 @@ body {
   outline: none;
   font-family: "Nunito", sans-serif;
   caret-color: white;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s;
+  /* select element reset */
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  text-overflow: ellipsis;
 }
-.tile-ohuhu::placeholder {
-  color: rgba(255, 255, 255, 0.5);
-}
-.tile-ohuhu:focus {
-  background: rgba(255, 255, 255, 0.35);
-  border-color: rgba(255, 255, 255, 0.8);
-}
+.tile-ohuhu::placeholder { color: rgba(255, 255, 255, 0.5); }
+.tile-ohuhu:focus,
+.tile-ohuhu:hover { background: rgba(255, 255, 255, 0.32); border-color: rgba(255, 255, 255, 0.8); }
+.tile-ohuhu option,
+.tile-ohuhu optgroup { color: #1e1b4b; background: white; font-size: 13px; font-family: "Nunito", sans-serif; }
 
 /* ── Scrollbar ────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
