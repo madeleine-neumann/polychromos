@@ -97,15 +97,16 @@
       renderAll();
     }
 
-    // ── GitHub Gist Sync ──────────────────────────────────────────────────────
-    const TOKEN_KEY   = 'polychromos_gh_token';
-    const GIST_ID_KEY = 'polychromos_gist_id';
-    const GIST_FILE   = 'polychromos_data.json';
-    const GH_API      = 'https://api.github.com';
+    // ── Shared Gist Sync ─────────────────────────────────────────────────────
+    const TOKEN_KEY      = 'polychromos_gh_token';
+    const SHARED_KEY     = 'shared_gist_id';
+    const POLY_FILE      = 'polychromos_data.json';
+    const OHUHU_FILE     = 'ohuhu_data.json';
+    const GH_API         = 'https://api.github.com';
 
     let githubToken = localStorage.getItem(TOKEN_KEY) || '';
-    let gistId      = localStorage.getItem(GIST_ID_KEY) || '';
-    let syncStatus  = 'idle'; // 'idle' | 'syncing' | 'synced' | 'error'
+    let gistId      = localStorage.getItem(SHARED_KEY) || '';
+    let syncStatus  = 'idle';
     let syncTimer   = null;
 
     function ghHeaders() {
@@ -118,16 +119,15 @@
       if (!token) return;
       githubToken = token;
       localStorage.setItem(TOKEN_KEY, token);
-      gistId = ''; localStorage.removeItem(GIST_ID_KEY);
+      gistId = ''; localStorage.removeItem(SHARED_KEY);
       await loadFromGist();
       renderAll();
     }
 
     function disconnectGist() {
       githubToken = ''; localStorage.removeItem(TOKEN_KEY);
-      gistId = '';     localStorage.removeItem(GIST_ID_KEY);
-      syncStatus = 'idle';
-      renderAll();
+      gistId = '';     localStorage.removeItem(SHARED_KEY);
+      syncStatus = 'idle'; renderAll();
     }
 
     async function ensureGistId() {
@@ -135,19 +135,30 @@
       const r = await fetch(`${GH_API}/gists?per_page=100`, { headers: ghHeaders() });
       if (!r.ok) throw new Error('Token ungültig');
       const gists = await r.json();
-      const found = gists.find(g => g.files[GIST_FILE]);
+      // Prefer shared gist (has both files), then fall back to single-file gists
+      const found = gists.find(g => g.files[POLY_FILE] && g.files[OHUHU_FILE])
+        || gists.find(g => g.files[POLY_FILE])
+        || gists.find(g => g.files[OHUHU_FILE]);
       if (found) {
         gistId = found.id;
       } else {
+        // Create shared gist with both datasets
+        const ohuhuLocal = localStorage.getItem('ohuhu_data') || '{}';
         const cr = await fetch(`${GH_API}/gists`, {
           method: 'POST', headers: ghHeaders(),
-          body: JSON.stringify({ description: 'Polychromos Stiftsammlung', public: false,
-            files: { [GIST_FILE]: { content: JSON.stringify(state) } } })
+          body: JSON.stringify({
+            description: 'Polychromos & Ohuhu Sammlung',
+            public: false,
+            files: {
+              [POLY_FILE]:  { content: JSON.stringify(state) },
+              [OHUHU_FILE]: { content: ohuhuLocal },
+            }
+          })
         });
         if (!cr.ok) throw new Error('Gist erstellen fehlgeschlagen');
         gistId = (await cr.json()).id;
       }
-      localStorage.setItem(GIST_ID_KEY, gistId);
+      localStorage.setItem(SHARED_KEY, gistId);
     }
 
     async function loadFromGist() {
@@ -158,13 +169,12 @@
         const r = await fetch(`${GH_API}/gists/${gistId}`, { headers: ghHeaders() });
         if (!r.ok) throw new Error();
         const data = await r.json();
-        const content = data.files[GIST_FILE]?.content;
+        const content = data.files[POLY_FILE]?.content;
         if (content) { state = JSON.parse(content); saveState(); }
         syncStatus = 'synced';
       } catch(e) {
-        console.error('Gist load:', e);
         syncStatus = 'error';
-        gistId = ''; localStorage.removeItem(GIST_ID_KEY);
+        gistId = ''; localStorage.removeItem(SHARED_KEY);
       }
       updateSyncUI();
     }
@@ -176,11 +186,11 @@
         await ensureGistId();
         const r = await fetch(`${GH_API}/gists/${gistId}`, {
           method: 'PATCH', headers: ghHeaders(),
-          body: JSON.stringify({ files: { [GIST_FILE]: { content: JSON.stringify(state) } } })
+          body: JSON.stringify({ files: { [POLY_FILE]: { content: JSON.stringify(state) } } })
         });
         if (!r.ok) throw new Error();
         syncStatus = 'synced';
-      } catch(e) { console.error('Gist save:', e); syncStatus = 'error'; }
+      } catch(e) { syncStatus = 'error'; }
       updateSyncUI();
     }
 

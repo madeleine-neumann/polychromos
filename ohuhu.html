@@ -14,6 +14,7 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css">
+  <script src="./data/polychromos.js"></script>
   <script src="./data/ohuhu.js"></script>
 </head>
 <body>
@@ -61,19 +62,28 @@
       renderAll();
     }
 
-    // ── GitHub Gist Sync ──────────────────────────────────────────────────────
-    const TOKEN_KEY   = 'polychromos_gh_token'; // shared with Polychromos app
-    const GIST_ID_KEY = 'ohuhu_gist_id';
-    const GIST_FILE   = 'ohuhu_data.json';
-    const GH_API      = 'https://api.github.com';
+    // ── Shared Gist Sync ─────────────────────────────────────────────────────
+    const TOKEN_KEY  = 'polychromos_gh_token';
+    const SHARED_KEY = 'shared_gist_id';
+    const POLY_FILE  = 'polychromos_data.json';
+    const OHUHU_FILE = 'ohuhu_data.json';
+    const GH_API     = 'https://api.github.com';
 
-    let githubToken = localStorage.getItem(TOKEN_KEY) || '';
-    let gistId      = localStorage.getItem(GIST_ID_KEY) || '';
-    let syncStatus  = 'idle';
-    let syncTimer   = null;
+    let githubToken  = localStorage.getItem(TOKEN_KEY) || '';
+    let gistId       = localStorage.getItem(SHARED_KEY) || '';
+    let syncStatus   = 'idle';
+    let syncTimer    = null;
+    let polyReverseMap = {}; // { ohuhuCode: polychromosNr }
 
     function ghHeaders() {
       return { Authorization: `Bearer ${githubToken}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' };
+    }
+
+    function buildReverseMap(polyState) {
+      polyReverseMap = {};
+      for (const [nr, d] of Object.entries(polyState)) {
+        if (d?.ohuhu) polyReverseMap[d.ohuhu] = nr;
+      }
     }
 
     async function connectGist() {
@@ -82,14 +92,14 @@
       if (!token) return;
       githubToken = token;
       localStorage.setItem(TOKEN_KEY, token);
-      gistId = ''; localStorage.removeItem(GIST_ID_KEY);
+      gistId = ''; localStorage.removeItem(SHARED_KEY);
       await loadFromGist(); renderAll();
     }
 
     function disconnectGist() {
       githubToken = ''; localStorage.removeItem(TOKEN_KEY);
-      gistId = '';     localStorage.removeItem(GIST_ID_KEY);
-      syncStatus = 'idle'; renderAll();
+      gistId = '';     localStorage.removeItem(SHARED_KEY);
+      polyReverseMap = {}; syncStatus = 'idle'; renderAll();
     }
 
     async function ensureGistId() {
@@ -97,19 +107,28 @@
       const r = await fetch(`${GH_API}/gists?per_page=100`, { headers: ghHeaders() });
       if (!r.ok) throw new Error('Token ungültig');
       const gists = await r.json();
-      const found = gists.find(g => g.files[GIST_FILE]);
+      const found = gists.find(g => g.files[POLY_FILE] && g.files[OHUHU_FILE])
+        || gists.find(g => g.files[POLY_FILE])
+        || gists.find(g => g.files[OHUHU_FILE]);
       if (found) {
         gistId = found.id;
       } else {
+        const polyLocal = localStorage.getItem('polychromos_data') || '{}';
         const cr = await fetch(`${GH_API}/gists`, {
           method: 'POST', headers: ghHeaders(),
-          body: JSON.stringify({ description: 'Ohuhu Marker Sammlung', public: false,
-            files: { [GIST_FILE]: { content: JSON.stringify(state) } } })
+          body: JSON.stringify({
+            description: 'Polychromos & Ohuhu Sammlung',
+            public: false,
+            files: {
+              [POLY_FILE]:  { content: polyLocal },
+              [OHUHU_FILE]: { content: JSON.stringify(state) },
+            }
+          })
         });
         if (!cr.ok) throw new Error();
         gistId = (await cr.json()).id;
       }
-      localStorage.setItem(GIST_ID_KEY, gistId);
+      localStorage.setItem(SHARED_KEY, gistId);
     }
 
     async function loadFromGist() {
@@ -120,23 +139,28 @@
         const r = await fetch(`${GH_API}/gists/${gistId}`, { headers: ghHeaders() });
         if (!r.ok) throw new Error();
         const data = await r.json();
-        const content = data.files[GIST_FILE]?.content;
-        if (content) {
-          const gistState = JSON.parse(content);
-          const gistOwned = Object.values(gistState).filter(v => v?.owned).length;
+
+        // Ohuhu state
+        const ohuhuContent = data.files[OHUHU_FILE]?.content;
+        if (ohuhuContent) {
+          const gistState = JSON.parse(ohuhuContent);
+          const gistOwned  = Object.values(gistState).filter(v => v?.owned).length;
           const localOwned = Object.values(state).filter(v => v?.owned).length;
           if (gistOwned === 0 && localOwned > 0) {
-            // Gist ist leer, lokal haben wir Daten (z.B. Prefill) → hochladen
             await saveToGist();
           } else {
-            state = gistState;
-            saveState();
+            state = gistState; saveState();
           }
         }
+
+        // Polychromos mapping → reverse map
+        const polyContent = data.files[POLY_FILE]?.content;
+        if (polyContent) buildReverseMap(JSON.parse(polyContent));
+
         syncStatus = 'synced';
       } catch(e) {
         syncStatus = 'error';
-        gistId = ''; localStorage.removeItem(GIST_ID_KEY);
+        gistId = ''; localStorage.removeItem(SHARED_KEY);
       }
       updateSyncUI();
     }
@@ -148,7 +172,7 @@
         await ensureGistId();
         const r = await fetch(`${GH_API}/gists/${gistId}`, {
           method: 'PATCH', headers: ghHeaders(),
-          body: JSON.stringify({ files: { [GIST_FILE]: { content: JSON.stringify(state) } } })
+          body: JSON.stringify({ files: { [OHUHU_FILE]: { content: JSON.stringify(state) } } })
         });
         if (!r.ok) throw new Error();
         syncStatus = 'synced';
@@ -217,17 +241,25 @@
         </div>`;
     }
 
+    const PENCILS_BY_NR = Object.fromEntries(PENCILS.map(p => [p.nr, p]));
+
     function renderTile(m) {
       const owned = isOwned(m.code);
       const badge = owned ? `<div class="tile-badge">✓</div>` : '';
+      const polyNr = polyReverseMap[m.code];
+      const pencil = polyNr ? PENCILS_BY_NR[polyNr] : null;
+      const polyLink = pencil
+        ? `<div class="tile-poly-link" title="Polychromos ${pencil.nr} · ${pencil.name}">P·${pencil.nr}</div>`
+        : '';
       return `<div
         class="tile${owned ? '' : ' tile--unowned'}"
         onclick="toggleOwned('${m.code}')"
-        title="${m.name} · ${m.code}"
+        title="${m.name} · ${m.code}${pencil ? ' · ≡ Polychromos ' + pencil.nr + ' ' + pencil.name : ''}"
         style="background:linear-gradient(160deg,${m.color},${darken(m.color)})">
         <div class="${codeClass(m.code)}">${m.code}</div>
         <div class="tile-name">${m.name}</div>
         ${badge}
+        ${polyLink}
       </div>`;
     }
 
