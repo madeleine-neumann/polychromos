@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Ohuhu — Sammlung laden</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Nunito', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: linear-gradient(150deg, #fdf4ff, #f3f0ff, #fce7f3); }
+    .card { background: white; border-radius: 20px; padding: 40px; text-align: center; box-shadow: 0 8px 32px rgba(168,85,247,0.15); max-width: 360px; }
+    h1 { font-size: 24px; font-weight: 900; background: linear-gradient(90deg, #c026d3, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin: 0 0 8px; }
+    p { color: #a855f7; font-size: 14px; font-weight: 600; margin: 0 0 24px; }
+    .count { font-size: 48px; font-weight: 900; color: #7c3aed; display: block; margin-bottom: 4px; }
+    .label { font-size: 13px; color: #c084fc; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🖊 Ohuhu</h1>
+    <p>Deine Sammlung wird geladen…</p>
+    <span class="count" id="num">0</span>
+    <span class="label">Marker vorgemerkt</span>
+  </div>
+  <script>
+    const STATE = {"120":{"owned":true},"R080":{"owned":true},"R1":{"owned":true},"R2":{"owned":true},"R3":{"owned":true},"R4":{"owned":true},"R5":{"owned":true},"R6":{"owned":true},"R7":{"owned":true},"R8":{"owned":true},"R9":{"owned":true},"R10":{"owned":true},"R11":{"owned":true},"R12":{"owned":true},"R13":{"owned":true},"R14":{"owned":true},"R15":{"owned":true},"R16":{"owned":true},"R17":{"owned":true},"R18":{"owned":true},"R19":{"owned":true},"R20":{"owned":true},"R21":{"owned":true},"R22":{"owned":true},"R23":{"owned":true},"R24":{"owned":true},"R25":{"owned":true},"R110":{"owned":true},"R120":{"owned":true},"R250":{"owned":true},"V030":{"owned":true},"V020":{"owned":true},"V230":{"owned":true},"RV030":{"owned":true},"RV160":{"owned":true},"RV180":{"owned":true},"RV260":{"owned":true},"RV280":{"owned":true},"RP1":{"owned":true},"RP6":{"owned":true},"P1":{"owned":true},"P2":{"owned":true},"P3":{"owned":true},"P4":{"owned":true},"P5":{"owned":true},"PB1":{"owned":true},"PB2":{"owned":true},"PB3":{"owned":true},"PB4":{"owned":true},"PB5":{"owned":true},"PB6":{"owned":true},"PB7":{"owned":true},"PB8":{"owned":true},"PB9":{"owned":true},"PB10":{"owned":true},"PB11":{"owned":true},"B030":{"owned":true},"B050":{"owned":true},"B120":{"owned":true},"B220":{"owned":true},"B250":{"owned":true},"B340":{"owned":true},"BGII05":{"owned":true},"BG1":{"owned":true},"BG4":{"owned":true},"BG5":{"owned":true},"BG6":{"owned":true},"BG7":{"owned":true},"BG8":{"owned":true},"BG9":{"owned":true},"BGII03":{"owned":true},"CGII00":{"owned":true},"CGII04":{"owned":true},"CGII07":{"owned":true},"CGII08":{"owned":true},"CGII09":{"owned":true},"CG020":{"owned":true},"CG2":{"owned":true},"CG5":{"owned":true},"WG050":{"owned":true},"WG01":{"owned":true},"WG3":{"owned":true},"WG4":{"owned":true},"GG020":{"owned":true},"GG3":{"owned":true},"GG5":{"owned":true},"RG030":{"owned":true},"RG120":{"owned":true},"NG03":{"owned":true},"NG06":{"owned":true},"NG07":{"owned":true},"NG09":{"owned":true},"MG020":{"owned":true},"BG050":{"owned":true},"BGII09":{"owned":true},"Y1":{"owned":true},"Y2":{"owned":true},"Y3":{"owned":true},"Y4":{"owned":true},"Y5":{"owned":true},"Y6":{"owned":true},"Y7":{"owned":true},"Y8":{"owned":true},"Y9":{"owned":true},"Y10":{"owned":true},"Y11":{"owned":true},"Y12":{"owned":true},"Y13":{"owned":true},"Y120":{"owned":true},"Y121":{"owned":true},"Y230":{"owned":true},"YR1":{"owned":true},"YR2":{"owned":true},"YR3":{"owned":true},"YR4":{"owned":true},"YR5":{"owned":true},"YR33":{"owned":true},"YR110":{"owned":true},"YR240":{"owned":true},"YR030":{"owned":true},"YR070":{"owned":true},"YG040":{"owned":true},"G020":{"owned":true},"GY1":{"owned":true},"GY2":{"owned":true},"GY3":{"owned":true},"GY4":{"owned":true},"GY5":{"owned":true},"GY6":{"owned":true},"GY7":{"owned":true},"GY8":{"owned":true},"GY42":{"owned":true},"GY43":{"owned":true},"GY172":{"owned":true},"G1":{"owned":true},"G2":{"owned":true},"G3":{"owned":true},"G4":{"owned":true},"G5":{"owned":true},"G6":{"owned":true},"G7":{"owned":true},"G8":{"owned":true},"G9":{"owned":true},"G120":{"owned":true},"G140":{"owned":true},"G220":{"owned":true},"G340":{"owned":true},"G420":{"owned":true},"GG1":{"owned":true},"E050":{"owned":true},"E090":{"owned":true},"E210":{"owned":true},"E220":{"owned":true},"E280":{"owned":true},"E380":{"owned":true},"E470":{"owned":true},"BR1":{"owned":true},"BR2":{"owned":true},"BR3":{"owned":true},"BR208":{"owned":true}};
+
+    localStorage.setItem('ohuhu_data', JSON.stringify(STATE));
+    document.getElementById('num').textContent = Object.keys(STATE).length;
+    setTimeout(() => window.location.href = './ohuhu.html', 1200);
+  </script>
+</body>
+</html>
