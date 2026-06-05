@@ -53,7 +53,7 @@
     function toggleOwned(code) {
       state[code] = state[code] || {};
       state[code].owned = !state[code].owned;
-      saveState(); scheduleGistSave(); renderAll();
+      saveState(); broadcastUpdate(); scheduleGistSave(); renderAll();
     }
 
     function setView(view) {
@@ -193,6 +193,24 @@
     }
 
     if (githubToken) loadFromGist().then(() => renderAll());
+
+    // ── Cross-Tab Sync ────────────────────────────────────────────────────────
+    const syncChannel = new BroadcastChannel('polychromos-sync');
+
+    function broadcastUpdate() {
+      try { syncChannel.postMessage({ type: 'updated', source: 'ohuhu' }); } catch {}
+    }
+
+    syncChannel.onmessage = ({ data }) => {
+      if (data.type !== 'updated') return;
+      state = loadState();
+      if (data.source === 'polychromos') {
+        // Polychromos hat Ohuhu-Zuordnung geändert → Reverse Map neu bauen
+        const polyRaw = localStorage.getItem('polychromos_data');
+        if (polyRaw) buildReverseMap(JSON.parse(polyRaw));
+      }
+      renderAll();
+    };
 
     // ── Render ────────────────────────────────────────────────────────────────
     function codeClass(code) {

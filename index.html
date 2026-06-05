@@ -79,16 +79,14 @@
     function toggleOwned(nr) {
       state[nr] = state[nr] || {};
       state[nr].owned = !state[nr].owned;
-      saveState();
-      scheduleGistSave();
+      saveState(); broadcastUpdate(); scheduleGistSave();
       renderAll();
     }
 
     function setOhuhu(nr, value) {
       state[nr] = state[nr] || {};
       state[nr].ohuhu = value.trim();
-      saveState();
-      scheduleGistSave();
+      saveState(); broadcastUpdate(); scheduleGistSave();
     }
 
     function setView(view) {
@@ -193,6 +191,19 @@
       } catch(e) { syncStatus = 'error'; }
       updateSyncUI();
     }
+
+    // ── Cross-Tab Sync ────────────────────────────────────────────────────────
+    const syncChannel = new BroadcastChannel('polychromos-sync');
+
+    function broadcastUpdate() {
+      try { syncChannel.postMessage({ type: 'updated', source: 'polychromos' }); } catch {}
+    }
+
+    syncChannel.onmessage = ({ data }) => {
+      if (data.type !== 'updated') return;
+      state = loadState();
+      renderAll();
+    };
 
     function scheduleGistSave() {
       clearTimeout(syncTimer);
