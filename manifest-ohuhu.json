@@ -1,8 +1,8 @@
 {
-  "name": "Polychromos",
-  "short_name": "Polychromos",
-  "description": "Meine Faber-Castell Polychromos Stiftsammlung",
-  "start_url": "./index.html",
+  "name": "Ohuhu Honolulu",
+  "short_name": "Ohuhu",
+  "description": "Meine Ohuhu Honolulu 320 Markersammlung",
+  "start_url": "./ohuhu.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#fdf4ff",
