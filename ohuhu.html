@@ -10,26 +10,19 @@
   <meta name="theme-color" content="#c026d3">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Ohuhu">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 
-  <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Nunito', sans-serif; }
-    input::placeholder { color: rgba(255,255,255,0.55); }
-    input[type="text"] { caret-color: white; }
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: #fdf4ff; }
-    ::-webkit-scrollbar-thumb { background: #d8b4fe; border-radius: 4px; }
-  </style>
+  <link rel="stylesheet" href="./styles.css">
 </head>
-<body class="min-h-screen" style="background: linear-gradient(135deg, #fdf4ff 0%, #f0f0ff 50%, #fce7f3 100%);">
-  <nav style="background:white;border-bottom:2px solid #f3e8ff;position:sticky;top:0;z-index:50;">
-    <div class="max-w-6xl mx-auto px-4 flex gap-1 py-2">
-      <a href="./index.html" style="padding:6px 16px;border-radius:20px;font-size:13px;font-weight:800;text-decoration:none;background:#f3e8ff;color:#7e22ce;">🎨 Polychromos</a>
-      <a href="./ohuhu.html" style="padding:6px 16px;border-radius:20px;font-size:13px;font-weight:800;text-decoration:none;background:linear-gradient(90deg,#c026d3,#7c3aed);color:white;box-shadow:0 2px 8px rgba(168,85,247,0.35);">🖊 Ohuhu</a>
+<body>
+  <nav class="app-nav">
+    <div class="nav-inner">
+      <a href="./index.html" class="nav-link nav-link--inactive">🎨 Polychromos</a>
+      <a href="./ohuhu.html" class="nav-link nav-link--active">🖊 Ohuhu</a>
     </div>
   </nav>
-  <div id="app" class="max-w-6xl mx-auto px-4 py-8" style="padding-bottom: env(safe-area-inset-bottom, 24px);"></div>
+  <div id="app" class="app-inner"></div>
 
   <script>
     const MARKERS = [
@@ -502,21 +495,26 @@
     if (githubToken) loadFromGist().then(() => renderAll());
 
     // ── Render ────────────────────────────────────────────────────────────────
+    function codeClass(code) {
+      if (code.length <= 3) return 'tile-code tile-code--lg';
+      if (code.length <= 5) return 'tile-code tile-code--md';
+      return 'tile-code tile-code--sm';
+    }
+
     function renderAuthBar() {
       if (githubToken) {
         return `
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-            <span id="sync-status" style="font-size:11px;font-weight:700;color:#9333ea;">${{idle:'',syncing:'⏳',synced:'☁ gespeichert',error:'⚠ Fehler'}[syncStatus]||''}</span>
-            <span style="font-size:11px;font-weight:800;background:#f0fdf4;color:#16a34a;padding:3px 10px;border-radius:20px;">✓ GitHub</span>
-            <button onclick="disconnectGist()" style="font-size:11px;font-weight:800;color:#9333ea;background:#f3e8ff;border:none;padding:4px 10px;border-radius:20px;cursor:pointer;">Trennen</button>
+          <div class="auth-bar">
+            <span id="sync-status" class="sync-label">${{idle:'',syncing:'⏳',synced:'☁ gespeichert',error:'⚠ Fehler'}[syncStatus]||''}</span>
+            <span class="connected-badge">✓ GitHub</span>
+            <button class="auth-btn" onclick="disconnectGist()">Trennen</button>
           </div>`;
       }
       return `
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
-          <input id="token-input" type="password" placeholder="GitHub Token"
-            style="font-size:11px;font-weight:700;font-family:'Nunito',sans-serif;padding:5px 10px;border-radius:20px;border:2px solid #e9d5ff;outline:none;color:#7c3aed;width:140px;"
+        <div class="auth-bar">
+          <input id="token-input" class="token-input" type="password" placeholder="GitHub Token"
             onkeydown="if(event.key==='Enter')connectGist()">
-          <button onclick="connectGist()" style="font-size:11px;font-weight:800;color:white;background:linear-gradient(90deg,#c026d3,#7c3aed);border:none;padding:5px 12px;border-radius:20px;cursor:pointer;">Verbinden</button>
+          <button class="connect-btn" onclick="connectGist()">Verbinden</button>
         </div>`;
     }
 
@@ -524,65 +522,35 @@
       const count = ownedCount();
       const pct = Math.round(count / MARKERS.length * 100);
       return `
-        <div class="mb-8">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;gap:12px;">
-            <h1 class="text-4xl font-black leading-tight" style="background: linear-gradient(90deg, #c026d3, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-              🖊 Ohuhu Honolulu
-            </h1>
-            <div style="padding-top:6px;flex-shrink:0;">${renderAuthBar()}</div>
-          </div>
-          <p class="font-bold mb-4 text-sm mt-2" style="color: #a855f7;">Meine Markersammlung · 320 Farben</p>
-
-          <div class="flex items-center gap-3 mb-4">
-            <div class="rounded-full h-2.5 overflow-hidden" style="flex:1;max-width:260px;background:#f3e8ff;">
-              <div class="h-full rounded-full transition-all duration-500"
-                   style="width: ${pct}%; background: linear-gradient(90deg, #c026d3, #7c3aed);"></div>
+        <div class="app-header">
+          <div class="header-top">
+            <div>
+              <h1 class="app-title">🖊 Ohuhu Honolulu</h1>
+              <p class="app-subtitle">Meine Markersammlung · 320 Farben</p>
             </div>
-            <span class="text-sm font-bold whitespace-nowrap" style="color: #9333ea;">
-              ${count} / ${MARKERS.length} · ${pct}%
-            </span>
+            ${renderAuthBar()}
           </div>
-
-          <div class="flex gap-2">
-            <button id="btn-numeric" onclick="setView('numeric')"
-              class="px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-200 cursor-pointer">
-              Nummerisch
-            </button>
-            <button id="btn-groups" onclick="setView('groups')"
-              class="px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-200 cursor-pointer">
-              Farbgruppen
-            </button>
+          <div class="progress-row">
+            <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+            <span class="progress-label">${count} / ${MARKERS.length} · ${pct}%</span>
+          </div>
+          <div class="view-toggle">
+            <button id="btn-numeric" class="toggle-btn" onclick="setView('numeric')">Nummerisch</button>
+            <button id="btn-groups" class="toggle-btn" onclick="setView('groups')">Farbgruppen</button>
           </div>
         </div>`;
     }
 
     function renderTile(m) {
       const owned = isOwned(m.code);
-      const filterStyle = owned ? '' : 'filter: saturate(0.2) brightness(1.08); opacity: 0.5;';
-      const badge = owned
-        ? `<div style="position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#7c3aed;box-shadow:0 1px 5px rgba(0,0,0,0.25);">✓</div>`
-        : '';
-      const fontSize = m.code.length > 5 ? '10px' : m.code.length > 3 ? '13px' : '17px';
-
+      const badge = owned ? `<div class="tile-badge">✓</div>` : '';
       return `<div
+        class="tile${owned ? '' : ' tile--unowned'}"
         onclick="toggleOwned('${m.code}')"
         title="${m.name} · ${m.code}"
-        style="
-          width:88px; height:100px;
-          border-radius:18px;
-          background: linear-gradient(160deg, ${m.color}, ${darken(m.color)});
-          display:flex; flex-direction:column; align-items:center;
-          justify-content:flex-start; padding:10px 4px 6px;
-          cursor:pointer; position:relative;
-          box-shadow: 0 3px 10px rgba(0,0,0,0.14);
-          transition: transform 0.15s, box-shadow 0.15s;
-          ${filterStyle}
-          user-select:none;
-        "
-        onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 10px 28px rgba(0,0,0,0.2)'"
-        onmouseout="this.style.transform='';this.style.boxShadow='0 3px 10px rgba(0,0,0,0.14)'">
-        <div style="font-size:${fontSize};font-weight:900;color:white;text-shadow:0 1px 4px rgba(0,0,0,0.4);line-height:1;letter-spacing:-0.5px;text-align:center;">${m.code}</div>
-        <div style="font-size:7px;font-weight:700;color:rgba(255,255,255,0.9);text-shadow:0 1px 3px rgba(0,0,0,0.35);text-align:center;margin-top:4px;line-height:1.25;padding:0 2px;word-break:break-word;">${m.name}</div>
+        style="background:linear-gradient(160deg,${m.color},${darken(m.color)})">
+        <div class="${codeClass(m.code)}">${m.code}</div>
+        <div class="tile-name">${m.name}</div>
         ${badge}
       </div>`;
     }
@@ -604,30 +572,23 @@
     ];
 
     function renderNumeric() {
-      return `<div style="display:flex;flex-wrap:wrap;gap:10px;">${MARKERS.map(m => renderTile(m)).join('')}</div>`;
+      return `<div class="tile-grid">${MARKERS.map(m => renderTile(m)).join('')}</div>`;
     }
 
     function renderGroups() {
       const byCode = Object.fromEntries(MARKERS.map(m => [m.code, m]));
       return COLOR_GROUPS.map(g => `
-        <div style="margin-bottom:32px;">
-          <h2 style="font-size:13px;font-weight:800;color:#7e22ce;text-transform:uppercase;letter-spacing:0.09em;margin-bottom:14px;">${g.label}</h2>
-          <div style="display:flex;flex-wrap:wrap;gap:10px;">${g.codes.map(c => byCode[c] ? renderTile(byCode[c]) : '').join('')}</div>
-        </div>
-      `).join('');
+        <div class="color-group">
+          <h2 class="group-heading">${g.label}</h2>
+          <div class="tile-grid">${g.codes.map(c => byCode[c] ? renderTile(byCode[c]) : '').join('')}</div>
+        </div>`).join('');
     }
 
     function renderAll() {
       const app = document.getElementById('app');
       app.innerHTML = renderHeader() + (currentView === 'groups' ? renderGroups() : renderNumeric());
-      document.getElementById('btn-numeric').style.cssText =
-        currentView === 'numeric'
-          ? 'background:linear-gradient(90deg,#c026d3,#7c3aed);color:white;box-shadow:0 2px 10px rgba(168,85,247,0.45);'
-          : 'background:#f3e8ff;color:#7e22ce;';
-      document.getElementById('btn-groups').style.cssText =
-        currentView === 'groups'
-          ? 'background:linear-gradient(90deg,#c026d3,#7c3aed);color:white;box-shadow:0 2px 10px rgba(168,85,247,0.45);'
-          : 'background:#f3e8ff;color:#7e22ce;';
+      document.getElementById('btn-numeric').className = `toggle-btn toggle-btn--${currentView === 'numeric' ? 'active' : 'inactive'}`;
+      document.getElementById('btn-groups').className  = `toggle-btn toggle-btn--${currentView === 'groups'  ? 'active' : 'inactive'}`;
     }
 
     renderAll();
