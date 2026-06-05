@@ -2,10 +2,24 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Polychromos — Meine Stiftsammlung</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#c026d3">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Polychromos">
+  <link rel="apple-touch-icon" href="./icon.svg">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Google APIs -->
+  <script src="https://apis.google.com/js/api.js" onload="gapiLoaded()" defer></script>
+  <script src="https://accounts.google.com/gsi/client" onload="gisLoaded()" defer></script>
+
   <style>
     body { font-family: 'Nunito', sans-serif; }
     input::placeholder { color: rgba(255,255,255,0.55); }
@@ -16,7 +30,7 @@
   </style>
 </head>
 <body class="min-h-screen" style="background: linear-gradient(135deg, #fdf4ff 0%, #f0f0ff 50%, #fce7f3 100%);">
-  <div id="app" class="max-w-6xl mx-auto px-6 py-10"></div>
+  <div id="app" class="max-w-6xl mx-auto px-4 py-8" style="padding-bottom: env(safe-area-inset-bottom, 24px);"></div>
 
   <script>
     // Hex-Farben basierend auf gescannten Swatches (Quelle: jennyscrayoncollection.com)
@@ -143,6 +157,13 @@
       { nr: 283, name: "Siena gebrannt",          lf: "★★★", color: "#895A47" },
     ];
 
+    // ── Config ────────────────────────────────────────────────────────────────
+    // Google Cloud → APIs & Services → Credentials → OAuth 2.0 Client ID
+    // Authorized JS origins: https://madeleine-neumann.github.io
+    const CLIENT_ID = 'DEINE_GOOGLE_CLIENT_ID_HIER.apps.googleusercontent.com';
+    const SCOPES = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile';
+    const FILE_NAME = 'polychromos_data.json';
+
     // ── Helpers ───────────────────────────────────────────────────────────────
     function darken(hex, amount = 0.72) {
       const r = parseInt(hex.slice(1,3), 16);
@@ -174,6 +195,7 @@
       state[nr] = state[nr] || {};
       state[nr].owned = !state[nr].owned;
       saveState();
+      scheduleDriveSave();
       renderAll();
     }
 
@@ -181,6 +203,7 @@
       state[nr] = state[nr] || {};
       state[nr].ohuhu = value.trim();
       saveState();
+      scheduleDriveSave();
     }
 
     function setView(view) {
@@ -189,34 +212,191 @@
       renderAll();
     }
 
+    // ── Auth & Drive ──────────────────────────────────────────────────────────
+    let tokenClient, gapiInited = false, gisInited = false;
+    let currentUser = null;   // { name, picture }
+    let driveFileId = null;
+    let syncStatus = 'offline'; // 'offline' | 'syncing' | 'synced' | 'error'
+    let driveSaveTimer = null;
+
+    function gapiLoaded() {
+      gapi.load('client', async () => {
+        await gapi.client.init({});
+        gapiInited = true;
+        checkApisReady();
+      });
+    }
+
+    function gisLoaded() {
+      if (CLIENT_ID.startsWith('DEINE')) { gisInited = true; checkApisReady(); return; }
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: handleTokenResponse,
+      });
+      gisInited = true;
+      checkApisReady();
+    }
+
+    function checkApisReady() {
+      if (gapiInited && gisInited) renderAll();
+    }
+
+    async function handleTokenResponse(resp) {
+      if (resp.error) { syncStatus = 'error'; renderAll(); return; }
+      gapi.client.setToken(resp);
+      currentUser = await fetchUserInfo(resp.access_token);
+      await loadFromDrive();
+      renderAll();
+    }
+
+    function signIn() {
+      if (!tokenClient) return alert('CLIENT_ID nicht konfiguriert. Siehe Kommentar im Quellcode.');
+      tokenClient.requestAccessToken({ prompt: currentUser ? '' : 'select_account' });
+    }
+
+    function signOut() {
+      const token = gapi.client.getToken();
+      if (token) { google.accounts.oauth2.revoke(token.access_token, () => {}); gapi.client.setToken(''); }
+      currentUser = null; driveFileId = null; syncStatus = 'offline';
+      renderAll();
+    }
+
+    async function fetchUserInfo(token) {
+      try {
+        const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        return await r.json();
+      } catch { return null; }
+    }
+
+    async function loadFromDrive() {
+      syncStatus = 'syncing'; updateSyncUI();
+      try {
+        const list = await gapi.client.request({
+          path: 'https://www.googleapis.com/drive/v3/files',
+          params: { spaces: 'appDataFolder', q: `name='${FILE_NAME}'`, fields: 'files(id)', pageSize: 1 }
+        });
+        const files = list.result.files || [];
+        if (files.length > 0) {
+          driveFileId = files[0].id;
+          const res = await gapi.client.request({
+            path: `https://www.googleapis.com/drive/v3/files/${driveFileId}`,
+            params: { alt: 'media' }
+          });
+          state = typeof res.result === 'object' && res.result ? res.result : JSON.parse(res.body);
+          saveState();
+        } else {
+          await saveToDriveNow();
+        }
+        syncStatus = 'synced';
+      } catch(e) { console.error('Drive load:', e); syncStatus = 'error'; }
+      updateSyncUI();
+    }
+
+    async function saveToDriveNow() {
+      if (!gapi.client.getToken()) return;
+      syncStatus = 'syncing'; updateSyncUI();
+      const content = JSON.stringify(state);
+      try {
+        if (driveFileId) {
+          await gapi.client.request({
+            path: `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}`,
+            method: 'PATCH',
+            params: { uploadType: 'media' },
+            headers: { 'Content-Type': 'application/json' },
+            body: content,
+          });
+        } else {
+          const b = 'poly-x7f';
+          const meta = JSON.stringify({ name: FILE_NAME, parents: ['appDataFolder'] });
+          const body = `--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${content}\r\n--${b}--`;
+          const r = await gapi.client.request({
+            path: 'https://www.googleapis.com/upload/drive/v3/files',
+            method: 'POST',
+            params: { uploadType: 'multipart' },
+            headers: { 'Content-Type': `multipart/related; boundary="${b}"` },
+            body,
+          });
+          driveFileId = r.result.id;
+        }
+        syncStatus = 'synced';
+      } catch(e) { console.error('Drive save:', e); syncStatus = 'error'; }
+      updateSyncUI();
+    }
+
+    function scheduleDriveSave() {
+      clearTimeout(driveSaveTimer);
+      driveSaveTimer = setTimeout(saveToDriveNow, 1500);
+    }
+
+    function updateSyncUI() {
+      const el = document.getElementById('sync-status');
+      if (!el || !currentUser) return;
+      const map = { syncing: '⏳', synced: '☁ gespeichert', error: '⚠ Fehler', offline: '' };
+      el.textContent = map[syncStatus] || '';
+    }
+
     // ── Render: Header ────────────────────────────────────────────────────────
+    function renderAuthBar() {
+      if (!gapiInited || !gisInited) return '';
+      if (CLIENT_ID.startsWith('DEINE')) {
+        return `<div style="font-size:11px;color:#d97706;background:#fef3c7;padding:4px 10px;border-radius:20px;font-weight:700;">⚠ CLIENT_ID fehlt</div>`;
+      }
+      if (!currentUser) {
+        return `
+          <button onclick="signIn()" style="
+            display:flex;align-items:center;gap:7px;
+            padding:7px 14px;border-radius:20px;
+            background:white;border:2px solid #e9d5ff;
+            font-size:12px;font-weight:800;color:#7c3aed;
+            cursor:pointer;transition:box-shadow 0.2s;
+            box-shadow:0 1px 4px rgba(124,58,237,0.1);
+          " onmouseover="this.style.boxShadow='0 3px 12px rgba(124,58,237,0.25)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(124,58,237,0.1)'">
+            <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+            Mit Google anmelden
+          </button>`;
+      }
+      const syncMap = { syncing: '⏳', synced: '☁', error: '⚠', offline: '' };
+      return `
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span id="sync-status" style="font-size:11px;font-weight:700;color:#9333ea;">${syncMap[syncStatus] || ''} ${syncStatus === 'synced' ? 'gespeichert' : syncStatus === 'error' ? 'Fehler' : syncStatus === 'syncing' ? '…' : ''}</span>
+          <img src="${currentUser.picture || ''}" style="width:28px;height:28px;border-radius:50%;border:2px solid #e9d5ff;" title="${currentUser.name || ''}">
+          <button onclick="signOut()" style="font-size:11px;font-weight:800;color:#9333ea;background:#f3e8ff;border:none;padding:4px 10px;border-radius:20px;cursor:pointer;">Abmelden</button>
+        </div>`;
+    }
+
     function renderHeader() {
       const count = ownedCount();
       const pct = Math.round(count / PENCILS.length * 100);
       return `
-        <div class="mb-10">
-          <h1 class="text-5xl font-black mb-1 leading-tight" style="background: linear-gradient(90deg, #c026d3, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-            🎨 Polychromos
-          </h1>
-          <p class="font-bold mb-5 text-base" style="color: #a855f7;">Meine Stiftsammlung</p>
+        <div class="mb-8">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;gap:12px;">
+            <h1 class="text-4xl font-black leading-tight" style="background: linear-gradient(90deg, #c026d3, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+              🎨 Polychromos
+            </h1>
+            <div style="padding-top:6px;flex-shrink:0;">${renderAuthBar()}</div>
+          </div>
+          <p class="font-bold mb-4 text-sm" style="color: #a855f7;">Meine Stiftsammlung</p>
 
-          <div class="flex items-center gap-4 mb-5">
-            <div class="rounded-full h-2.5 flex-1 max-w-sm overflow-hidden" style="background: #f3e8ff;">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="rounded-full h-2.5 overflow-hidden" style="flex:1;max-width:260px;background:#f3e8ff;">
               <div class="h-full rounded-full transition-all duration-500"
                    style="width: ${pct}%; background: linear-gradient(90deg, #c026d3, #7c3aed);"></div>
             </div>
             <span class="text-sm font-bold whitespace-nowrap" style="color: #9333ea;">
-              ${count} von ${PENCILS.length} · ${pct}%
+              ${count} / ${PENCILS.length} · ${pct}%
             </span>
           </div>
 
           <div class="flex gap-2">
             <button id="btn-numeric" onclick="setView('numeric')"
-              class="px-5 py-2 rounded-full text-sm font-bold transition-all duration-200 cursor-pointer">
+              class="px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-200 cursor-pointer">
               Nummerisch
             </button>
             <button id="btn-groups" onclick="setView('groups')"
-              class="px-5 py-2 rounded-full text-sm font-bold transition-all duration-200 cursor-pointer">
+              class="px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-200 cursor-pointer">
               Farbgruppen
             </button>
           </div>
@@ -325,6 +505,10 @@
     }
 
     renderAll();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW:', e));
+    }
   </script>
 </body>
 </html>
