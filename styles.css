@@ -71,6 +71,7 @@ body {
 /* ── Header ───────────────────────────────────────────────────────────────── */
 .app-header {
   margin-bottom: 28px;
+  overflow-x: hidden;
 }
 
 .header-top {
@@ -514,8 +515,6 @@ body {
 .table-scroll {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  margin: 0 -16px;
-  padding: 0 16px;
 }
 .data-table {
   width: 100%;
