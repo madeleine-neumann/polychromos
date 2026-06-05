@@ -131,7 +131,13 @@ body {
 .view-toggle {
   display: flex;
   gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
 }
+.view-toggle::-webkit-scrollbar { display: none; }
+.view-toggle .toggle-btn { flex-shrink: 0; }
 
 .toggle-btn {
   padding: 7px 18px;
@@ -505,6 +511,12 @@ body {
 .theme-toggle:hover { opacity: 0.8; }
 
 /* ── Table view ───────────────────────────────────────────────────────────── */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -16px;
+  padding: 0 16px;
+}
 .data-table {
   width: 100%;
   border-collapse: collapse;

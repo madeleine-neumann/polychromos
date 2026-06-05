@@ -375,7 +375,7 @@
     const ICON_CHECK = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
 
     function renderTable() {
-      return `<table class="data-table">
+      return `<div class="table-scroll"><table class="data-table">
         <thead><tr>
           <th></th>
           <th>Code</th>
@@ -400,7 +400,7 @@
             <td><button class="table-icon-btn${refillCart ? ' table-icon-btn--green' : ''}" onclick="toggleRefillCart('${m.code}')" data-tooltip="${refillCart ? 'Nachfüller auf Liste' : 'Nachfüller kaufen'}">${ICON_REFILL_FULL}</button></td>
           </tr>`;
         }).join('')}</tbody>
-      </table>`;
+      </table></div>`;
     }
 
     function renderAll() {
