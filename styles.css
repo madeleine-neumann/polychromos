@@ -374,6 +374,61 @@ body {
   letter-spacing: 0.02em;
 }
 
+/* ── Dark mode ────────────────────────────────────────────────────────────── */
+:root[data-theme="dark"] {
+  --c-primary:   #d946ef;
+  --c-secondary: #8b5cf6;
+  --c-accent:    #c084fc;
+  --c-light:     #2d1b3d;
+  --c-mid:       #4a2d6b;
+  --c-text:      #e9d5ff;
+  --shadow-sm:   0 2px 6px rgba(0, 0, 0, 0.5);
+  --shadow-md:   0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+:root[data-theme="dark"] body {
+  background: linear-gradient(150deg, #1a0a2e 0%, #1e1040 60%, #2d1040 100%);
+}
+
+:root[data-theme="dark"] .app-nav {
+  background: #1a0a2e;
+  border-bottom-color: var(--c-mid);
+}
+
+:root[data-theme="dark"] .connected-badge {
+  background: #14532d;
+  color: #86efac;
+}
+
+:root[data-theme="dark"] .token-input {
+  background: #2d1b3d;
+  color: var(--c-text);
+}
+
+:root[data-theme="dark"] .tile-ohuhu option,
+:root[data-theme="dark"] .tile-ohuhu optgroup {
+  background: #1a0a2e;
+  color: #e9d5ff;
+}
+
+/* ── Theme toggle button ──────────────────────────────────────────────────── */
+.theme-toggle {
+  margin-left: auto;
+  background: var(--c-light);
+  color: var(--c-text);
+  border: none;
+  border-radius: 99px;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.theme-toggle:hover { opacity: 0.8; }
+
 /* ── Scrollbar ────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;
