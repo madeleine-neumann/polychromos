@@ -52,12 +52,14 @@
     let state = loadState();
     let currentView = localStorage.getItem('ohuhu_view') || 'numeric';
 
-    function isOwned(code)    { return !!(state[code]?.owned); }
-    function isRefill(code)   { return !!(state[code]?.refill); }
-    function isWishlist(code) { return !!(state[code]?.wishlist); }
-    function ownedCount()     { return MARKERS.filter(m => isOwned(m.code)).length; }
-    function refillCount()    { return MARKERS.filter(m => isOwned(m.code) && isRefill(m.code)).length; }
-    function wishlistCount()  { return MARKERS.filter(m => isWishlist(m.code)).length; }
+    function isOwned(code)       { return !!(state[code]?.owned); }
+    function isRefill(code)      { return !!(state[code]?.refill); }
+    function isWishlist(code)    { return !!(state[code]?.wishlist); }
+    function isRefillCart(code)  { return !!(state[code]?.refillCart); }
+    function ownedCount()        { return MARKERS.filter(m => isOwned(m.code)).length; }
+    function refillCount()       { return MARKERS.filter(m => isOwned(m.code) && isRefill(m.code)).length; }
+    function wishlistCount()     { return MARKERS.filter(m => isWishlist(m.code)).length; }
+    function refillCartCount()   { return MARKERS.filter(m => isRefillCart(m.code)).length; }
 
     function toggleOwned(code) {
       state[code] = state[code] || {};
@@ -75,6 +77,12 @@
     function toggleWishlist(code) {
       state[code] = state[code] || {};
       state[code].wishlist = !state[code].wishlist;
+      saveState(); broadcastUpdate(); scheduleGistSave(); renderAll();
+    }
+
+    function toggleRefillCart(code) {
+      state[code] = state[code] || {};
+      state[code].refillCart = !state[code].refillCart;
       saveState(); broadcastUpdate(); scheduleGistSave(); renderAll();
     }
 
@@ -300,6 +308,10 @@
         ? `<div class="tile-refill-badge${refill ? ' tile-refill-badge--owned' : ''}" onclick="event.stopPropagation();toggleRefill('${m.code}')" title="Nachfüller ${refill ? 'vorhanden' : 'nicht vorhanden'}">${refill ? ICON_REFILL_FULL : ICON_REFILL_EMPTY}</div>`
         : '';
       const cartBadge = `<div class="tile-cart-badge${wishlist ? ' tile-cart-badge--active' : ''}" onclick="event.stopPropagation();toggleWishlist('${m.code}')" title="${wishlist ? 'Von Einkaufsliste entfernen' : 'Zur Einkaufsliste hinzufügen'}">${ICON_CART}</div>`;
+      const refillCartIcon = isRefillCart(m.code)
+        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.8-4-4-6.5c-.2 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/><line x1="12" y1="12" x2="12" y2="18" stroke="white" stroke-width="2"/><line x1="9" y1="15" x2="15" y2="15" stroke="white" stroke-width="2"/></svg>`
+        : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.8-4-4-6.5c-.2 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`;
+      const refillCartBadge = `<div class="tile-cart-badge tile-cart-badge--br${isRefillCart(m.code) ? ' tile-cart-badge--active' : ''}" onclick="event.stopPropagation();toggleRefillCart('${m.code}')" title="${isRefillCart(m.code) ? 'Nachfüller von Liste entfernen' : 'Nachfüller auf Einkaufsliste'}">${refillCartIcon}</div>`;
       const polyNr = polyReverseMap[m.code];
       const pencil = polyNr ? PENCILS_BY_NR[polyNr] : null;
       const polyLink = pencil
@@ -315,6 +327,7 @@
         ${badge}
         ${refillBadge}
         ${cartBadge}
+        ${refillCartBadge}
         ${polyLink}
       </div>`;
     }
@@ -343,14 +356,19 @@
     }
 
     function renderShoppingList() {
-      const items = MARKERS.filter(m => isWishlist(m.code));
-      if (!items.length) return `<p class="shopping-empty">Keine Marker auf der Einkaufsliste.<br>Tippe auf den Warenkorb auf einer Kachel um sie hinzuzufügen.</p>`;
-      return `<div class="shopping-list">${items.map(m => `
-        <div class="shopping-item" onclick="toggleWishlist('${m.code}')" title="Von Liste entfernen">
+      const markers  = MARKERS.filter(m => isWishlist(m.code));
+      const refills  = MARKERS.filter(m => isRefillCart(m.code));
+      if (!markers.length && !refills.length)
+        return `<p class="shopping-empty">Keine Einträge auf der Einkaufsliste.<br>Tippe auf einen Warenkorb auf einer Kachel um sie hinzuzufügen.</p>`;
+      const renderItems = (items, toggle) => items.map(m => `
+        <div class="shopping-item" onclick="${toggle}('${m.code}')" title="Von Liste entfernen">
           <div class="shopping-swatch" style="background:${m.color}"></div>
           <span class="shopping-code">${m.code}</span>
           <span class="shopping-name">${m.name}</span>
-        </div>`).join('')}</div>`;
+        </div>`).join('');
+      return `
+        ${markers.length ? `<h2 class="group-heading">Marker</h2><div class="shopping-list">${renderItems(markers, 'toggleWishlist')}</div>` : ''}
+        ${refills.length ? `<h2 class="group-heading" style="margin-top:24px">Nachfüller</h2><div class="shopping-list">${renderItems(refills, 'toggleRefillCart')}</div>` : ''}`;
     }
 
     function renderAll() {

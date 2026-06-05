@@ -280,8 +280,8 @@
     function renderTile(p) {
       const owned    = isOwned(p.nr);
       const wishlist = isWishlist(p.nr);
-      const badge    = owned ? `<div class="tile-badge">✓</div>` : '';
-      const cartBadge = `<div class="tile-refill-badge${wishlist ? ' tile-refill-badge--owned' : ''}" onclick="event.stopPropagation();toggleWishlist(${p.nr})" title="${wishlist ? 'Auf der Einkaufsliste' : 'Zur Einkaufsliste hinzufügen'}">${ICON_CART}</div>`;
+
+      const cartBadge = `<div class="tile-badge tile-badge--cart${wishlist ? ' tile-badge--cart-active' : ''}" onclick="event.stopPropagation();toggleWishlist(${p.nr})" title="${wishlist ? 'Auf der Einkaufsliste' : 'Zur Einkaufsliste hinzufügen'}">${ICON_CART}</div>`;
       return `<div
         class="tile${owned ? '' : ' tile--unowned'}"
         onclick="toggleOwned(${p.nr})"
@@ -289,7 +289,6 @@
         style="background:linear-gradient(160deg,${p.color},${darken(p.color)})">
         <div class="tile-code">${p.nr}</div>
         <div class="tile-name">${p.name}</div>
-        ${badge}
         ${cartBadge}
         ${ohuhuSelect(p.nr)}
       </div>`;

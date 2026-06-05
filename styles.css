@@ -278,9 +278,17 @@ body {
 .tile:active {
   transform: translateY(-1px);
 }
-.tile--unowned {
-  filter: saturate(0.15) brightness(1.08);
-  opacity: 0.5;
+.tile--unowned::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.52);
+  z-index: 0;
+  pointer-events: none;
+}
+:root[data-theme="dark"] .tile--unowned::before {
+  background: rgba(15, 17, 40, 0.6);
 }
 
 .tile-code {
@@ -310,49 +318,11 @@ body {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
-.tile-badge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 900;
-  color: var(--c-secondary);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-}
-
-.tile-refill-badge {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #d1d5db;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-  transition: color 0.15s;
-}
-.tile-refill-badge:hover {
-  color: #9ca3af;
-}
-.tile-refill-badge--owned {
-  color: var(--c-secondary);
-}
-
+/* shared badge base */
+.tile-badge,
+.tile-refill-badge,
 .tile-cart-badge {
   position: absolute;
-  bottom: 6px;
-  left: 6px;
   width: 20px;
   height: 20px;
   border-radius: 50%;
@@ -360,12 +330,25 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #d1d5db;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-  transition: color 0.15s;
+  z-index: 1;
+  transition: background 0.15s, color 0.15s;
 }
+
+/* positions */
+.tile-badge         { top: 6px;    right: 6px;  color: var(--c-secondary); font-size: 10px; font-weight: 900; }
+.tile-refill-badge  { bottom: 6px; left: 6px;   color: #d1d5db; }
+.tile-cart-badge    { top: 6px;    right: 6px;  color: #d1d5db; }
+.tile-cart-badge--br{ top: auto;   left: auto; bottom: 6px; right: 6px; }
+
+/* hover */
+.tile-refill-badge:hover,
 .tile-cart-badge:hover { color: #9ca3af; }
-.tile-cart-badge--active { color: var(--c-secondary); }
+
+/* active = green circle */
+.tile-refill-badge--owned    { color: var(--c-secondary); }
+.tile-cart-badge--active,
+.tile-badge--cart-active     { background: #4ade80; color: white; }
 
 /* ── Shopping list ────────────────────────────────────────────────────────── */
 .shopping-list {
