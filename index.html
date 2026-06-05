@@ -362,18 +362,27 @@
 
     // ── Render: Views ─────────────────────────────────────────────────────────
     const COLOR_GROUPS = [
-      { label: "🟡 Gelbtöne",         nrs: [101,102,103,104,105,106,107,108,109,205] },
-      { label: "🟠 Orangetöne",        nrs: [111,113,115] },
-      { label: "🔴 Rottöne",           nrs: [117,118,121,131,219,223,225,226] },
-      { label: "🌸 Rosa & Pink",       nrs: [119,123,124,125,127,128,129,130,132] },
-      { label: "💜 Violett & Magenta", nrs: [133,134,135,136,137,138,160,194,249,263] },
-      { label: "🔵 Blautöne",          nrs: [110,120,140,141,143,144,145,146,151,152,157,181,246,247] },
-      { label: "🩵 Türkis",            nrs: [149,153,154,155] },
-      { label: "🟢 Grüntöne",          nrs: [112,156,158,159,161,162,163,165,166,167,168,170,171,172,173,174,264,266,267,268,276,278] },
-      { label: "🤎 Braun & Erde",      nrs: [169,175,176,177,178,179,180,182,183,184,185,186,187,188,189,190,191,192,193,280,283] },
-      { label: "🩶 Grau & Schwarz",    nrs: [199,217,230,231,232,233,234,235,270,271,272,273,274,275] },
-      { label: "✨ Metallic",           nrs: [250,251,252] },
+      { label: "Gelbtöne",         nrs: [101,102,103,104,105,106,107,108,109,205] },
+      { label: "Orangetöne",        nrs: [111,113,115] },
+      { label: "Rottöne",           nrs: [117,118,121,131,219,223,225,226] },
+      { label: "Rosa & Pink",       nrs: [119,123,124,125,127,128,129,130,132] },
+      { label: "Violett & Magenta", nrs: [133,134,135,136,137,138,160,194,249,263] },
+      { label: "Blautöne",          nrs: [110,120,140,141,143,144,145,146,151,152,157,181,246,247] },
+      { label: "Türkis",            nrs: [149,153,154,155] },
+      { label: "Grüntöne",          nrs: [112,156,158,159,161,162,163,165,166,167,168,170,171,172,173,174,264,266,267,268,276,278] },
+      { label: "Braun & Erde",      nrs: [169,175,176,177,178,179,180,182,183,184,185,186,187,188,189,190,191,192,193,280,283] },
+      { label: "Grau & Schwarz",    nrs: [199,217,230,231,232,233,234,235,270,271,272,273,274,275] },
+      { label: "Metallic",          nrs: [250,251,252] },
     ];
+
+    function groupGradient(nrs, byNr) {
+      const colors = nrs.map(nr => byNr[nr]?.color).filter(Boolean);
+      const n = 10;
+      const samples = colors.length <= n
+        ? colors
+        : Array.from({length: n}, (_, i) => colors[Math.floor(i * colors.length / n)]);
+      return `linear-gradient(90deg, ${samples.join(', ')})`;
+    }
 
     function renderNumeric() {
       return `<div class="tile-grid">${PENCILS.map(p => renderTile(p)).join('')}</div>`;
@@ -383,6 +392,7 @@
       const byNr = Object.fromEntries(PENCILS.map(p => [p.nr, p]));
       return COLOR_GROUPS.map(g => `
         <div class="color-group">
+          <div class="group-gradient" style="background:${groupGradient(g.nrs, byNr)}"></div>
           <h2 class="group-heading">${g.label}</h2>
           <div class="tile-grid">${g.nrs.map(nr => byNr[nr] ? renderTile(byNr[nr]) : '').join('')}</div>
         </div>`).join('');

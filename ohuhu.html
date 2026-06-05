@@ -556,20 +556,29 @@
     }
 
     const COLOR_GROUPS = [
-      { label: "🟡 Gelb (Y)",              codes: ["Y1","Y2","Y3","Y4","Y5","Y6","Y7","Y8","Y9","Y10","Y11","Y12","Y13","Y010","Y030","Y040","Y050","Y070","Y080","Y110","Y120","Y121","Y130","Y140","Y180","Y210","Y230","Y250","Y260","Y270"] },
-      { label: "🟠 Orange (YR)",            codes: ["YR1","YR2","YR3","YR4","YR5","YR33","YR030","YR070","YR090","YR110","YR170","YR172","YR180","YR190","YR220","YR240","YR250","YR260"] },
-      { label: "🔴 Rot & Pink (R, RV, RP)", codes: ["RV010","RV030","RV070","RV080","RV100","RV130","RV160","RV180","RV200","RV240","RV250","RV260","RV270","RV280","RV300","RV320","RV330","RV350","RP1","RP6","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13","R14","R15","R16","R17","R18","R19","R20","R21","R22","R23","R24","R25","R29","R050","R070","R080","R110","R120","R150","R160","R170","R180","R190","R200","R230","R240","R242","R250","R270","R280","R282","R284","R290","R340","R350"] },
-      { label: "💜 Violett & Lila (P, V)",  codes: ["P1","P2","P3","P4","P5","V020","V030","V050","V060","V070","V080","V150","V160","V210","V230","V250","V270","V320","V322","V330","V340","V370","V390","V450"] },
-      { label: "🔵 Blau (B, PB)",           codes: ["B030","B050","B070","B080","B090","B110","B120","B140","B180","B190","B220","B250","B260","B270","B290","B340","B350","B380","B440","B64","PB1","PB2","PB3","PB4","PB5","PB6","PB7","PB8","PB9","PB10","PB11"] },
-      { label: "🩵 Blaugrün & Türkis (BG)", codes: ["BG1","BG2","BG3","BG4","BG5","BG6","BG7","BG8","BG9","BG68"] },
-      { label: "🟢 Grün (G, GY)",           codes: ["G1","G2","G3","G4","G5","G6","G7","G8","G9","G020","G030","G050","G060","G070","G080","G110","G120","G130","G140","G170","G190","G220","G240","G260","G270","G300","G320","G322","G324","G326","G330","G340","G360","G390","G410","G420","G440","G470","G490","G500","GY1","GY2","GY3","GY4","GY5","GY6","GY7","GY8","GY42","GY43","GY172","GY173"] },
-      { label: "🤎 Erde & Braun (E, BR)",   codes: ["E010","E030","E050","E060","E080","E090","E110","E120","E130","E160","E170","E210","E220","E240","E260","E280","E300","E310","E370","E380","E400","E430","E432","E434","E440","E450","E460","E470","E490","BR1","BR2","BR3","BR208"] },
-      { label: "🩶 Warmgrau (WG)",          codes: ["WG01","WG3","WG4","WG050","WG070","WG090","WG09","WG130"] },
-      { label: "🩶 Kaltgrau (CG, NG)",      codes: ["CG2","CG5","CGII00","CGII04","CGII07","CGII08","CGII09","CG020","CG030","CG050","CG070","NG03","NG06","NG07","NG09"] },
-      { label: "🩶 Spezialgrau",            codes: ["RG030","RG050","RG080","RG110","RG120","RG150","GG1","GG3","GG5","GG9","GG020","GG040","GG060","GG110","YG040","YG080","MG020","MG030","MG060","MG100","BGII03","BGII05","BGII09","BG050","BG060","BG070"] },
-      { label: "✨ Fluoreszierend",          codes: ["FY010","FY020","FY030","FY050"] },
-      { label: "⬛ Schwarz",                 codes: ["120"] },
+      { label: "Gelb (Y)",         codes: ["Y1","Y2","Y3","Y4","Y5","Y6","Y7","Y8","Y9","Y10","Y11","Y12","Y13","Y010","Y030","Y040","Y050","Y070","Y080","Y110","Y120","Y121","Y130","Y140","Y180","Y210","Y230","Y250","Y260","Y270"] },
+      { label: "Orange (YR)",       codes: ["YR1","YR2","YR3","YR4","YR5","YR33","YR030","YR070","YR090","YR110","YR170","YR172","YR180","YR190","YR220","YR240","YR250","YR260"] },
+      { label: "Rot & Pink",        codes: ["RV010","RV030","RV070","RV080","RV100","RV130","RV160","RV180","RV200","RV240","RV250","RV260","RV270","RV280","RV300","RV320","RV330","RV350","RP1","RP6","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13","R14","R15","R16","R17","R18","R19","R20","R21","R22","R23","R24","R25","R29","R050","R070","R080","R110","R120","R150","R160","R170","R180","R190","R200","R230","R240","R242","R250","R270","R280","R282","R284","R290","R340","R350"] },
+      { label: "Violett & Lila",    codes: ["P1","P2","P3","P4","P5","V020","V030","V050","V060","V070","V080","V150","V160","V210","V230","V250","V270","V320","V322","V330","V340","V370","V390","V450"] },
+      { label: "Blau",              codes: ["B030","B050","B070","B080","B090","B110","B120","B140","B180","B190","B220","B250","B260","B270","B290","B340","B350","B380","B440","B64","PB1","PB2","PB3","PB4","PB5","PB6","PB7","PB8","PB9","PB10","PB11"] },
+      { label: "Blaugrün & Türkis", codes: ["BG1","BG2","BG3","BG4","BG5","BG6","BG7","BG8","BG9","BG68"] },
+      { label: "Grün",              codes: ["G1","G2","G3","G4","G5","G6","G7","G8","G9","G020","G030","G050","G060","G070","G080","G110","G120","G130","G140","G170","G190","G220","G240","G260","G270","G300","G320","G322","G324","G326","G330","G340","G360","G390","G410","G420","G440","G470","G490","G500","GY1","GY2","GY3","GY4","GY5","GY6","GY7","GY8","GY42","GY43","GY172","GY173"] },
+      { label: "Erde & Braun",      codes: ["E010","E030","E050","E060","E080","E090","E110","E120","E130","E160","E170","E210","E220","E240","E260","E280","E300","E310","E370","E380","E400","E430","E432","E434","E440","E450","E460","E470","E490","BR1","BR2","BR3","BR208"] },
+      { label: "Warmgrau",          codes: ["WG01","WG3","WG4","WG050","WG070","WG090","WG09","WG130"] },
+      { label: "Kaltgrau",          codes: ["CG2","CG5","CGII00","CGII04","CGII07","CGII08","CGII09","CG020","CG030","CG050","CG070","NG03","NG06","NG07","NG09"] },
+      { label: "Spezialgrau",       codes: ["RG030","RG050","RG080","RG110","RG120","RG150","GG1","GG3","GG5","GG9","GG020","GG040","GG060","GG110","YG040","YG080","MG020","MG030","MG060","MG100","BGII03","BGII05","BGII09","BG050","BG060","BG070"] },
+      { label: "Fluoreszierend",    codes: ["FY010","FY020","FY030","FY050"] },
+      { label: "Schwarz",           codes: ["120"] },
     ];
+
+    function groupGradient(codes, byCode) {
+      const colors = codes.map(c => byCode[c]?.color).filter(Boolean);
+      const n = 10;
+      const samples = colors.length <= n
+        ? colors
+        : Array.from({length: n}, (_, i) => colors[Math.floor(i * colors.length / n)]);
+      return `linear-gradient(90deg, ${samples.join(', ')})`;
+    }
 
     function renderNumeric() {
       return `<div class="tile-grid">${MARKERS.map(m => renderTile(m)).join('')}</div>`;
@@ -579,6 +588,7 @@
       const byCode = Object.fromEntries(MARKERS.map(m => [m.code, m]));
       return COLOR_GROUPS.map(g => `
         <div class="color-group">
+          <div class="group-gradient" style="background:${groupGradient(g.codes, byCode)}"></div>
           <h2 class="group-heading">${g.label}</h2>
           <div class="tile-grid">${g.codes.map(c => byCode[c] ? renderTile(byCode[c]) : '').join('')}</div>
         </div>`).join('');
