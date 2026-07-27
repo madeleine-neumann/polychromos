@@ -26,13 +26,36 @@
 <body>
   <nav class="app-nav">
     <div class="nav-inner">
-      <a href="./index.html" class="nav-link nav-link--inactive"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .622.622l4.353-1.321a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg><span class="nav-link-text">Polychromos</span></a>
-      <a href="./ohuhu.html" class="nav-link nav-link--active"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg><span class="nav-link-text">Ohuhu</span></a>
-      <a href="./matched-pencils.html" class="nav-link nav-link--inactive"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span class="nav-link-text">Matched Pencils</span></a>
-      <a href="./spectrum.html" class="nav-link nav-link--inactive"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/></svg><span class="nav-link-text">Spektrum</span></a>
+      <details class="nav-dropdown" id="navDropdown">
+        <summary class="nav-current">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>
+          <span class="nav-link-text">Ohuhu</span>
+          <svg class="nav-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <div class="nav-dropdown-list">
+        <a href="./index.html" class="nav-link nav-link--inactive"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .622.622l4.353-1.321a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg><span class="nav-link-text">Polychromos</span></a>
+        <a href="./ohuhu.html" class="nav-link nav-link--active"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg><span class="nav-link-text">Ohuhu</span></a>
+        <a href="./matched-pencils.html" class="nav-link nav-link--inactive"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span class="nav-link-text">Matched Pencils</span></a>
+        <a href="./spectrum.html" class="nav-link nav-link--inactive"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/></svg><span class="nav-link-text">Spektrum</span></a>
+        </div>
+      </details>
       <button class="theme-toggle" id="themeToggle" aria-label="Dark mode umschalten"></button>
     </div>
   </nav>
+  <script>
+    (function(){
+      const dd = document.getElementById('navDropdown');
+      document.addEventListener('click', (e) => {
+        if (dd.open && !dd.contains(e.target)) dd.open = false;
+      });
+      dd.addEventListener('click', (e) => {
+        if (e.target.closest('a')) dd.open = false;
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') dd.open = false;
+      });
+    })();
+  </script>
   <div id="app" class="app-inner"></div>
 
   <script src="./js/ohuhu.js"></script>
