@@ -9,7 +9,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png">
 
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;1,500;1,600;1,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css">
   <script>(function(){const t=localStorage.getItem('colortracker_theme')||( window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);})()</script>
   <script src="./data/polychromos.js"></script>
@@ -18,9 +20,9 @@
 <body>
   <nav class="app-nav">
     <div class="nav-inner">
-      <a href="./index.html" class="nav-link nav-link--inactive">🎨 Polychromos</a>
-      <a href="./ohuhu.html" class="nav-link nav-link--inactive">🖊 Ohuhu</a>
-      <a href="./matched-pencils.html" class="nav-link nav-link--active">🔗 Matched Pencils</a>
+      <a href="./index.html" class="nav-link nav-link--inactive"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .622.622l4.353-1.321a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg><span class="nav-link-text">Polychromos</span></a>
+      <a href="./ohuhu.html" class="nav-link nav-link--inactive"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg><span class="nav-link-text">Ohuhu</span></a>
+      <a href="./matched-pencils.html" class="nav-link nav-link--active"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span class="nav-link-text">Matched Pencils</span></a>
       <button class="theme-toggle" id="themeToggle" aria-label="Dark mode umschalten"></button>
     </div>
   </nav>
@@ -162,6 +164,7 @@
     const ICON_CHECK = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
     const ICON_MISSING = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
     const ICON_CART = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>`;
+    const ICON_LINK = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
 
     function renderHeader(rows) {
       const ownedPencils = rows.filter(r => r.pencilOwned);
@@ -170,7 +173,7 @@
         <div class="app-header">
           <div class="header-top">
             <div>
-              <h1 class="app-title">🔗 Matched Pencils</h1>
+              <h1 class="app-title">${ICON_LINK}<span class="app-title-text">Matched Pencils</span></h1>
               <p class="app-subtitle">Polychromos-Besitz × farblich nächstgelegener Ohuhu-Marker</p>
             </div>
           </div>
@@ -208,7 +211,7 @@
           <th data-tooltip="Farbabstand (CIE76 ΔE) zwischen Stift und Zwilling: 0 = identisch, bis ~10 = kaum sichtbar unterschiedlich, ab ~20 = deutlich andere Farbe">ΔE ⓘ</th>
         </tr></thead>
         <tbody>${filtered.map(r => `
-          <tr style="${r.pencilOwned && !r.markerOwned ? 'background:rgba(234,88,12,0.08)' : ''}">
+          <tr style="${r.pencilOwned && !r.markerOwned ? 'border-left:3px solid var(--accent-warm)' : ''}">
             <td><div class="table-swatch" style="background:${r.pencil.color}"></div></td>
             <td>${r.pencil.shopUrl ? `<a href="${r.pencil.shopUrl}" target="_blank" rel="noopener" style="color:inherit" data-tooltip="Im Kunstpark-Shop ansehen">${r.pencil.nr}</a>` : r.pencil.nr}</td>
             <td>${r.pencil.name}</td>

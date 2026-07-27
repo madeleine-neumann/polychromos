@@ -6,19 +6,26 @@
   <link rel="icon" type="image/x-icon" href="./favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png">
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@1,600&family=Inter:wght@500;600&family=IBM+Plex+Mono:wght@600&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Nunito', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: linear-gradient(150deg, #fdf4ff, #f3f0ff, #fce7f3); }
-    .card { background: white; border-radius: 20px; padding: 40px; text-align: center; box-shadow: 0 8px 32px rgba(168,85,247,0.15); max-width: 360px; }
-    h1 { font-size: 24px; font-weight: 900; background: linear-gradient(90deg, #c026d3, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin: 0 0 8px; }
-    p { color: #a855f7; font-size: 14px; font-weight: 600; margin: 0 0 24px; }
-    .count { font-size: 48px; font-weight: 900; color: #7c3aed; display: block; margin-bottom: 4px; }
-    .label { font-size: 13px; color: #c084fc; font-weight: 700; }
+    :root { --paper:#F4E9E8; --paper-raised:#FBF5F4; --ink:#1E1C18; --ink-soft:#6E6A5E; --line:#E5D3D1; --accent:#0083C7; }
+    @media (prefers-color-scheme: dark) {
+      :root { --paper:#10161F; --paper-raised:#182130; --ink:#E9E6DD; --ink-soft:#93989F; --line:#2B3849; --accent:#4FC1F0; }
+    }
+    body { font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: var(--paper); color: var(--ink); }
+    .card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 10px; padding: 40px; text-align: center; max-width: 360px; }
+    h1 { display: flex; align-items: center; justify-content: center; gap: 8px; font-family: 'Fraunces', serif; font-style: italic; font-size: 22px; font-weight: 600; color: var(--ink); margin: 0 0 8px; }
+    h1 svg { color: var(--accent); }
+    p { color: var(--ink-soft); font-size: 14px; font-weight: 500; margin: 0 0 24px; }
+    .count { font-family: 'IBM Plex Mono', monospace; font-size: 44px; font-weight: 600; color: var(--accent); display: block; margin-bottom: 4px; }
+    .label { font-size: 12px; color: var(--ink-soft); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>🖊 Ohuhu</h1>
+    <h1><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>Ohuhu</h1>
     <p>Deine Sammlung wird geladen…</p>
     <span class="count" id="num">0</span>
     <span class="label">Marker vorgemerkt</span>
