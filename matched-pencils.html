@@ -77,6 +77,7 @@
     }
 
     const MARKERS_BY_CODE = Object.fromEntries(MARKERS.map(m => [m.code, m]));
+    const PENCILS_BY_NR = Object.fromEntries(PENCILS.map(p => [p.nr, p]));
     const NEAREST_OHUHU_BY_NR = Object.fromEntries(PENCILS.map(p => {
       let best = null, bestDist = Infinity;
       for (const m of MARKERS) {
@@ -84,6 +85,14 @@
         if (d < bestDist) { bestDist = d; best = m; }
       }
       return [p.nr, { code: best.code, name: best.name, dist: bestDist }];
+    }));
+    const NEAREST_POLY_BY_CODE = Object.fromEntries(MARKERS.map(m => {
+      let best = null, bestDist = Infinity;
+      for (const p of PENCILS) {
+        const d = labDist(p.color, m.colors[2]);
+        if (d < bestDist) { bestDist = d; best = p; }
+      }
+      return [m.code, { nr: best.nr, dist: bestDist }];
     }));
 
     // ── State ─────────────────────────────────────────────────────────────────
@@ -101,6 +110,11 @@
       return polyState[nr]?.ohuhu || NEAREST_OHUHU_BY_NR[nr]?.code || '';
     }
     function isAutoMatch(nr) { return polyState[nr]?.ohuhu ? !!polyState[nr].ohuhuAuto : true; }
+
+    function matchedPencilNr(code) {
+      const manual = Object.entries(polyState).find(([, d]) => d?.ohuhu === code);
+      return manual ? manual[0] : (NEAREST_POLY_BY_CODE[code]?.nr ?? null);
+    }
 
     function refresh() {
       polyState  = readJSON('polychromos_data');
@@ -196,9 +210,17 @@
     const ICON_LINK = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
     const ICON_CHEVRON = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
 
+    const FILTER_LABELS = {
+      all:              'Alle Stifte',
+      owned:            'Nur vollständige Paare',
+      'missing-ohuhu':  'Fehlender Ohuhu-Marker',
+      'missing-poly':   'Fehlender Polychromos-Stift',
+    };
+
     function renderHeader(rows) {
-      const ownedPencils = rows.filter(r => r.pencilOwned);
-      const missing = ownedPencils.filter(r => !r.markerOwned);
+      const eitherOwned = rows.filter(r => r.pencilOwned || r.markerOwned);
+      const complete = eitherOwned.filter(r => r.pencilOwned && r.markerOwned);
+      const missing = eitherOwned.length - complete.length;
       return `
         <div class="app-header">
           <div class="header-top">
@@ -208,31 +230,33 @@
             </div>
           </div>
           <div class="progress-row">
-            <div class="progress-bar"><div class="progress-fill" style="width:${ownedPencils.length ? Math.round((ownedPencils.length-missing.length)/ownedPencils.length*100) : 0}%"></div></div>
-            <span class="progress-label">${ownedPencils.length - missing.length} / ${ownedPencils.length} Zwillinge vorhanden</span>
-            <span class="progress-label refill-label">${missing.length} fehlen noch</span>
+            <div class="progress-bar"><div class="progress-fill" style="width:${eitherOwned.length ? Math.round(complete.length/eitherOwned.length*100) : 0}%"></div></div>
+            <span class="progress-label">${complete.length} / ${eitherOwned.length} Zwillinge vorhanden</span>
+            <span class="progress-label refill-label">${missing} fehlen noch</span>
           </div>
           <details class="view-select">
             <summary class="view-select-current">
-              <span>${{ all: 'Alle Stifte', owned: 'Nur besessene Stifte', missing: 'Nur fehlende Zwillinge' }[filter]}</span>
+              <span>${FILTER_LABELS[filter]}</span>
               ${ICON_CHEVRON}
             </summary>
             <div class="view-select-list">
-              <button class="${filter === 'all'     ? 'active' : ''}" onclick="setFilter('all')">Alle Stifte</button>
-              <button class="${filter === 'owned'   ? 'active' : ''}" onclick="setFilter('owned')">Nur besessene Stifte</button>
-              <button class="${filter === 'missing' ? 'active' : ''}" onclick="setFilter('missing')">Nur fehlende Zwillinge</button>
+              <button class="${filter === 'all'             ? 'active' : ''}" onclick="setFilter('all')">${FILTER_LABELS.all}</button>
+              <button class="${filter === 'owned'            ? 'active' : ''}" onclick="setFilter('owned')">${FILTER_LABELS.owned}</button>
+              <button class="${filter === 'missing-ohuhu'    ? 'active' : ''}" onclick="setFilter('missing-ohuhu')">${FILTER_LABELS['missing-ohuhu']}</button>
+              <button class="${filter === 'missing-poly'     ? 'active' : ''}" onclick="setFilter('missing-poly')">${FILTER_LABELS['missing-poly']}</button>
             </div>
           </details>
         </div>`;
     }
 
-    let filter = 'missing';
+    let filter = 'missing-ohuhu';
     function setFilter(f) { filter = f; renderAll(); }
 
     function renderTable(rows) {
       const filtered = rows.filter(r => {
-        if (filter === 'owned')   return r.pencilOwned;
-        if (filter === 'missing') return r.pencilOwned && !r.markerOwned;
+        if (filter === 'owned')           return r.pencilOwned && r.markerOwned;
+        if (filter === 'missing-ohuhu')   return r.pencilOwned && !r.markerOwned;
+        if (filter === 'missing-poly')    return r.markerOwned && !r.pencilOwned;
         return true;
       });
       if (!filtered.length) {
@@ -247,7 +271,7 @@
           <th data-tooltip="Farbabstand (CIE76 ΔE) zwischen Stift und Zwilling: 0 = identisch, bis ~10 = kaum sichtbar unterschiedlich, ab ~20 = deutlich andere Farbe">ΔE ⓘ</th>
         </tr></thead>
         <tbody>${filtered.map(r => `
-          <tr style="${r.pencilOwned && !r.markerOwned ? 'border-left:3px solid var(--accent-warm)' : ''}">
+          <tr style="${r.pencilOwned !== r.markerOwned ? 'border-left:3px solid var(--accent-warm)' : ''}">
             <td><div class="table-swatch" style="background:${r.pencil.color}"></div></td>
             <td>${r.pencil.shopUrl ? `<a href="${r.pencil.shopUrl}" target="_blank" rel="noopener" style="color:inherit" data-tooltip="Im Kunstpark-Shop ansehen">${r.pencil.nr}</a>` : r.pencil.nr}</td>
             <td>${r.pencil.name}</td>
@@ -281,14 +305,40 @@
           wishlisted: marker ? isMarkerWishlisted(marker.code) : false,
           auto: isAutoMatch(p.nr),
           dist: marker ? labDist(p.color, marker.colors[2]) : null,
+          reverse: false,
         };
       });
     }
 
+    // Abgleich in Gegenrichtung: besessene Ohuhu-Marker, deren nächstgelegener
+    // Polychromos-Stift in der Hinrichtung von keinem Stift als Zwilling erreicht wird.
+    function buildReverseRows(forwardRows) {
+      const coveredMarkerCodes = new Set(forwardRows.filter(r => r.marker).map(r => r.marker.code));
+      return MARKERS
+        .filter(m => isMarkerOwned(m.code) && !coveredMarkerCodes.has(m.code))
+        .map(m => {
+          const nr = matchedPencilNr(m.code);
+          const pencil = nr != null ? PENCILS_BY_NR[nr] : null;
+          if (!pencil) return null;
+          return {
+            pencil,
+            pencilOwned: isPencilOwned(pencil.nr),
+            marker: m,
+            markerOwned: true,
+            wishlisted: isMarkerWishlisted(m.code),
+            auto: !polyState[pencil.nr]?.ohuhu,
+            dist: labDist(pencil.color, m.colors[2]),
+            reverse: true,
+          };
+        })
+        .filter(Boolean);
+    }
+
     function renderAll() {
-      const rows = buildRows();
+      const forwardRows = buildRows();
+      const allRows = [...forwardRows, ...buildReverseRows(forwardRows)];
       const app = document.getElementById('app');
-      app.innerHTML = renderHeader(rows) + renderTable(rows);
+      app.innerHTML = renderHeader(allRows) + renderTable(allRows);
     }
 
     renderAll();
