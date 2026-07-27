@@ -42,6 +42,42 @@
       return '#' + [r,g,b].map(c => Math.round(c * amount).toString(16).padStart(2,'0')).join('');
     }
 
+    const PENCILS_BY_NR = Object.fromEntries(PENCILS.map(p => [p.nr, p]));
+
+    // ── Farbabstand (Lab/CIE76) für Ohuhu-Zuordnungs-Check ──────────────────────
+    function hexToRgb(hex) {
+      return [1,3,5].map(i => parseInt(hex.slice(i,i+2), 16));
+    }
+    function rgbToLab([r,g,b]) {
+      const srgb = [r,g,b].map(c => {
+        c /= 255;
+        return c <= 0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4);
+      });
+      const [rl,gl,bl] = srgb;
+      const x = (rl*0.4124564 + gl*0.3575761 + bl*0.1804375) / 0.95047;
+      const y = (rl*0.2126729 + gl*0.7151522 + bl*0.0721750) / 1.0;
+      const z = (rl*0.0193339 + gl*0.1191920 + bl*0.9503041) / 1.08883;
+      const f = t => t > 0.008856 ? Math.cbrt(t) : (7.787*t + 16/116);
+      const [fx,fy,fz] = [x,y,z].map(f);
+      return [116*fy - 16, 500*(fx-fy), 200*(fy-fz)];
+    }
+    function labDist(hexA, hexB) {
+      const [L1,a1,b1] = rgbToLab(hexToRgb(hexA));
+      const [L2,a2,b2] = rgbToLab(hexToRgb(hexB));
+      return Math.sqrt((L1-L2)**2 + (a1-a2)**2 + (b1-b2)**2);
+    }
+    // Für jeden Stift die nähste Ohuhu-Farbe vorab berechnen (Vergleich gegen die mittlere Auftragsstufe)
+    const NEAREST_OHUHU_BY_NR = Object.fromEntries(PENCILS.map(p => {
+      let best = null, bestDist = Infinity;
+      for (const m of MARKERS) {
+        const d = labDist(p.color, m.colors[2]);
+        if (d < bestDist) { bestDist = d; best = m; }
+      }
+      return [p.nr, { code: best.code, name: best.name, dist: bestDist }];
+    }));
+    // Schwelle, ab der eine manuelle Zuordnung als farblich fragwürdig markiert wird (CIE76 ΔE)
+    const OHUHU_MATCH_WARN_THRESHOLD = 20;
+
     // ── Ohuhu Dropdown ────────────────────────────────────────────────────────
     const MARKERS_BY_CODE = Object.fromEntries(MARKERS.map(m => [m.code, m]));
 
@@ -62,11 +98,54 @@
       return `<select class="tile-ohuhu" onclick="event.stopPropagation()" onchange="setOhuhu(${nr},this.value)">${opts}</select>`;
     }
 
+    // Prüft die manuelle Zuordnung gegen die reale Ohuhu-Farbe (ΔE = CIE76-Farbabstand, 0 = identisch, >20 = deutlich andere Farbe)
+    function ohuhuMatchInfo(nr) {
+      const val = getOhuhu(nr);
+      const suggestion = NEAREST_OHUHU_BY_NR[nr];
+      if (val) {
+        const marker = MARKERS_BY_CODE[val];
+        if (!marker) return null;
+        const dist = labDist(PENCILS_BY_NR[nr].color, marker.colors[2]);
+        if (dist >= OHUHU_MATCH_WARN_THRESHOLD) {
+          return { type: 'warn', text: `⚠ ΔE ${dist.toFixed(0)}`,
+            title: `Farbabstand groß (ΔE ${dist.toFixed(0)}) — näher wäre ${suggestion.code} · ${suggestion.name}` };
+        }
+        return null;
+      }
+      if (suggestion) {
+        return { type: 'suggest', text: `≈ ${suggestion.code}`,
+          title: `Nächstgelegene Ohuhu-Farbe (nicht bestätigt): ${suggestion.code} · ${suggestion.name}` };
+      }
+      return null;
+    }
+
+    function ohuhuMatchBadge(nr) {
+      const info = ohuhuMatchInfo(nr);
+      if (!info) return '';
+      return `<div class="tile-ohuhu-warn${info.type === 'suggest' ? ' tile-ohuhu-warn--suggest' : ''}" title="${info.title}">${info.text}</div>`;
+    }
+
+    function ohuhuMatchInline(nr) {
+      const info = ohuhuMatchInfo(nr);
+      if (!info) return '';
+      return `<span class="ohuhu-match-inline${info.type === 'suggest' ? ' ohuhu-match-inline--suggest' : ''}" title="${info.title}">${info.text}</span>`;
+    }
+
     // ── State ─────────────────────────────────────────────────────────────────
     const STORAGE_KEY = 'polychromos_data';
 
     function loadState() {
-      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw === null) {
+        // Erster Start: jeden Stift mit der farblich nächstgelegenen Ohuhu-Farbe vorbelegen
+        const seeded = {};
+        PENCILS.forEach(p => {
+          const nearest = NEAREST_OHUHU_BY_NR[p.nr];
+          if (nearest) seeded[p.nr] = { ohuhu: nearest.code, ohuhuAuto: true };
+        });
+        return seeded;
+      }
+      try { return JSON.parse(raw) || {}; }
       catch { return {}; }
     }
 
@@ -99,7 +178,20 @@
     function setOhuhu(nr, value) {
       state[nr] = state[nr] || {};
       state[nr].ohuhu = value.trim();
+      state[nr].ohuhuAuto = false; // manuell bestätigt/geändert
       saveState(); broadcastUpdate(); scheduleGistSave();
+    }
+
+    // Überschreibt ALLE Ohuhu-Zuordnungen mit dem farblich nächstgelegenen Marker (ΔE-basiert)
+    function recomputeAllOhuhuMatches() {
+      PENCILS.forEach(p => {
+        const nearest = NEAREST_OHUHU_BY_NR[p.nr];
+        if (!nearest) return;
+        state[p.nr] = state[p.nr] || {};
+        state[p.nr].ohuhu = nearest.code;
+        state[p.nr].ohuhuAuto = true;
+      });
+      saveState(); broadcastUpdate(); scheduleGistSave(); renderAll();
     }
 
     function setView(view) {
@@ -271,6 +363,7 @@
             <button id="btn-groups"   class="toggle-btn" onclick="setView('groups')">Farbgruppen</button>
             <button id="btn-wishlist" class="toggle-btn" onclick="setView('wishlist')">Einkaufsliste${wishlistCount() ? ` (${wishlistCount()})` : ''}</button>
             <button id="btn-table"    class="toggle-btn" onclick="setView('table')">Tabelle</button>
+            <button class="toggle-btn" style="margin-left:auto" onclick="recomputeAllOhuhuMatches()" data-tooltip="Alle Ohuhu-Zuordnungen anhand der Hex-Werte neu berechnen (überschreibt aktuelle Auswahl)">🔄 Ohuhu neu zuordnen</button>
           </div>
         </div>`;
     }
@@ -291,6 +384,7 @@
         <div class="tile-code">${p.nr}</div>
         <div class="tile-name">${p.name}</div>
         ${cartBadge}
+        ${ohuhuMatchBadge(p.nr)}
         ${ohuhuSelect(p.nr)}
       </div>`;
     }
@@ -355,7 +449,7 @@
             <td class="table-lf">${p.lf}</td>
             <td><button class="table-icon-btn${owned ? ' table-icon-btn--active' : ''}" onclick="toggleOwned(${p.nr})" data-tooltip="${owned ? 'Besessen' : 'Nicht besessen'}">${ICON_CHECK}</button></td>
             <td><button class="table-icon-btn${wishlist ? ' table-icon-btn--green' : ''}" onclick="toggleWishlist(${p.nr})" data-tooltip="${wishlist ? 'Auf der Einkaufsliste' : 'Zur Einkaufsliste hinzufügen'}">${ICON_CART}</button></td>
-            <td style="color:var(--c-accent);font-size:12px">${ohuhu || '—'}</td>
+            <td style="color:var(--c-accent);font-size:12px">${ohuhu || '—'} ${ohuhuMatchInline(p.nr)}</td>
           </tr>`;
         }).join('')}</tbody>
       </table></div>`;
