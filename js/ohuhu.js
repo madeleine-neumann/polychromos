@@ -1,0 +1,413 @@
+    // ── State ─────────────────────────────────────────────────────────────────
+    const STORAGE_KEY = 'ohuhu_data';
+
+    function loadState() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw === null) {
+        // Erster Start: Besitzstand aus dem Swatch-Chart-Import vorbefüllen
+        const seeded = {};
+        MARKERS.forEach(m => { if (m.owned) seeded[m.code] = { owned: true }; });
+        return seeded;
+      }
+      try { return JSON.parse(raw) || {}; }
+      catch { return {}; }
+    }
+    function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+    let state = loadState();
+    let currentView = localStorage.getItem('ohuhu_view') || 'numeric';
+
+    function isOwned(code)       { return !!(state[code]?.owned); }
+    function isRefill(code)      { return !!(state[code]?.refill); }
+    function isWishlist(code)    { return !!(state[code]?.wishlist); }
+    function isRefillCart(code)  { return !!(state[code]?.refillCart); }
+    function ownedCount()        { return MARKERS.filter(m => isOwned(m.code)).length; }
+    function refillCount()       { return MARKERS.filter(m => isOwned(m.code) && isRefill(m.code)).length; }
+    function wishlistCount()     { return MARKERS.filter(m => isWishlist(m.code)).length; }
+    function refillCartCount()   { return MARKERS.filter(m => isRefillCart(m.code)).length; }
+
+    function toggleOwned(code) {
+      state[code] = state[code] || {};
+      state[code].owned = !state[code].owned;
+      if (!state[code].owned) state[code].refill = false;
+      saveState(); broadcastUpdate(); scheduleGistSave(); renderAll();
+    }
+
+    function toggleRefill(code) {
+      state[code] = state[code] || {};
+      state[code].refill = !state[code].refill;
+      saveState(); broadcastUpdate(); scheduleGistSave(); renderAll();
+    }
+
+    function toggleWishlist(code) {
+      state[code] = state[code] || {};
+      state[code].wishlist = !state[code].wishlist;
+      saveState(); broadcastUpdate(); scheduleGistSave(); renderAll();
+    }
+
+    function toggleRefillCart(code) {
+      state[code] = state[code] || {};
+      state[code].refillCart = !state[code].refillCart;
+      saveState(); broadcastUpdate(); scheduleGistSave(); renderAll();
+    }
+
+    function setView(view) {
+      currentView = view;
+      localStorage.setItem('ohuhu_view', view);
+      renderAll();
+    }
+
+    // ── Shared Gist Sync ─────────────────────────────────────────────────────
+    const TOKEN_KEY  = 'polychromos_gh_token';
+    const SHARED_KEY = 'shared_gist_id';
+    const POLY_FILE  = 'polychromos_data.json';
+    const OHUHU_FILE = 'ohuhu_data.json';
+    const GH_API     = 'https://api.github.com';
+
+    let githubToken  = localStorage.getItem(TOKEN_KEY) || '';
+    let gistId       = localStorage.getItem(SHARED_KEY) || '';
+    let syncStatus   = 'idle';
+    let syncTimer    = null;
+    let polyReverseMap = {}; // { ohuhuCode: polychromosNr }
+
+    function ghHeaders() {
+      return { Authorization: `Bearer ${githubToken}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' };
+    }
+
+    function buildReverseMap(polyState) {
+      polyReverseMap = {};
+      for (const [nr, d] of Object.entries(polyState)) {
+        if (d?.ohuhu) polyReverseMap[d.ohuhu] = nr;
+      }
+    }
+
+    async function connectGist() {
+      const input = document.getElementById('token-input');
+      const token = input?.value.trim();
+      if (!token) return;
+      githubToken = token;
+      localStorage.setItem(TOKEN_KEY, token);
+      gistId = ''; localStorage.removeItem(SHARED_KEY);
+      await loadFromGist(); renderAll();
+    }
+
+    function disconnectGist() {
+      githubToken = ''; localStorage.removeItem(TOKEN_KEY);
+      gistId = '';     localStorage.removeItem(SHARED_KEY);
+      polyReverseMap = {}; syncStatus = 'idle'; renderAll();
+    }
+
+    async function ensureGistId() {
+      if (gistId) return;
+      const r = await fetch(`${GH_API}/gists?per_page=100`, { headers: ghHeaders() });
+      if (!r.ok) throw new Error('Token ungültig');
+      const gists = await r.json();
+      const found = gists.find(g => g.files[POLY_FILE] && g.files[OHUHU_FILE])
+        || gists.find(g => g.files[POLY_FILE])
+        || gists.find(g => g.files[OHUHU_FILE]);
+      if (found) {
+        gistId = found.id;
+      } else {
+        const polyLocal = localStorage.getItem('polychromos_data') || '{}';
+        const cr = await fetch(`${GH_API}/gists`, {
+          method: 'POST', headers: ghHeaders(),
+          body: JSON.stringify({
+            description: 'Polychromos & Ohuhu Sammlung',
+            public: false,
+            files: {
+              [POLY_FILE]:  { content: polyLocal },
+              [OHUHU_FILE]: { content: JSON.stringify(state) },
+            }
+          })
+        });
+        if (!cr.ok) throw new Error();
+        gistId = (await cr.json()).id;
+      }
+      localStorage.setItem(SHARED_KEY, gistId);
+    }
+
+    async function loadFromGist() {
+      if (!githubToken) return;
+      syncStatus = 'syncing'; updateSyncUI();
+      try {
+        await ensureGistId();
+        const r = await fetch(`${GH_API}/gists/${gistId}`, { headers: ghHeaders() });
+        if (!r.ok) throw new Error();
+        const data = await r.json();
+
+        // Ohuhu state
+        const ohuhuContent = data.files[OHUHU_FILE]?.content;
+        if (ohuhuContent) {
+          const gistState = JSON.parse(ohuhuContent);
+          const gistOwned  = Object.values(gistState).filter(v => v?.owned).length;
+          const localOwned = Object.values(state).filter(v => v?.owned).length;
+          if (gistOwned === 0 && localOwned > 0) {
+            await saveToGist();
+          } else {
+            state = gistState; saveState();
+          }
+        }
+
+        // Polychromos mapping → reverse map
+        const polyContent = data.files[POLY_FILE]?.content;
+        if (polyContent) buildReverseMap(JSON.parse(polyContent));
+
+        syncStatus = 'synced';
+      } catch(e) {
+        syncStatus = 'error';
+        gistId = ''; localStorage.removeItem(SHARED_KEY);
+      }
+      updateSyncUI();
+    }
+
+    async function saveToGist() {
+      if (!githubToken) return;
+      syncStatus = 'syncing'; updateSyncUI();
+      try {
+        await ensureGistId();
+        const r = await fetch(`${GH_API}/gists/${gistId}`, {
+          method: 'PATCH', headers: ghHeaders(),
+          body: JSON.stringify({ files: { [OHUHU_FILE]: { content: JSON.stringify(state) } } })
+        });
+        if (!r.ok) throw new Error();
+        syncStatus = 'synced';
+      } catch(e) { syncStatus = 'error'; }
+      updateSyncUI();
+    }
+
+    function scheduleGistSave() {
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(saveToGist, 1500);
+    }
+
+    function updateSyncUI() {
+      const el = document.getElementById('sync-status');
+      if (!el) return;
+      const map = { idle: '', syncing: '⏳', synced: '☁ gespeichert', error: '⚠ Fehler' };
+      el.textContent = map[syncStatus] || '';
+    }
+
+    if (githubToken) loadFromGist().then(() => renderAll());
+
+    // ── Cross-Tab Sync ────────────────────────────────────────────────────────
+    const syncChannel = new BroadcastChannel('polychromos-sync');
+
+    function broadcastUpdate() {
+      try { syncChannel.postMessage({ type: 'updated', source: 'ohuhu' }); } catch {}
+    }
+
+    syncChannel.onmessage = ({ data }) => {
+      if (data.type !== 'updated') return;
+      state = loadState();
+      if (data.source === 'polychromos') {
+        // Polychromos hat Ohuhu-Zuordnung geändert → Reverse Map neu bauen
+        const polyRaw = localStorage.getItem('polychromos_data');
+        if (polyRaw) buildReverseMap(JSON.parse(polyRaw));
+      }
+      renderAll();
+    };
+
+    // ── Render ────────────────────────────────────────────────────────────────
+    function hardGradient(colors, deg = 180) {
+      const step = 100 / colors.length;
+      const stops = colors.map((c, i) => `${c} ${i*step}%, ${c} ${(i+1)*step}%`).join(', ');
+      return `linear-gradient(${deg}deg, ${stops})`;
+    }
+
+    function codeClass(code) {
+      if (code.length <= 3) return 'tile-code tile-code--lg';
+      if (code.length <= 5) return 'tile-code tile-code--md';
+      return 'tile-code tile-code--sm';
+    }
+
+    function renderAuthBar() {
+      if (githubToken) {
+        return `
+          <div class="auth-bar">
+            <span id="sync-status" class="sync-label">${{idle:'',syncing:'⏳',synced:'☁ gespeichert',error:'⚠ Fehler'}[syncStatus]||''}</span>
+            <span class="connected-badge">✓ GitHub</span>
+            <button class="auth-btn" onclick="disconnectGist()">Trennen</button>
+          </div>`;
+      }
+      return `
+        <div class="auth-bar">
+          <input id="token-input" class="token-input" type="password" placeholder="GitHub Token"
+            onkeydown="if(event.key==='Enter')connectGist()">
+          <button class="connect-btn" onclick="connectGist()">Verbinden</button>
+        </div>`;
+    }
+
+    function renderHeader() {
+      const count  = ownedCount();
+      const rCount = refillCount();
+      const pct = Math.round(count / MARKERS.length * 100);
+      return `
+        <div class="app-header">
+          <div class="header-top">
+            <div>
+              <h1 class="app-title">🖊 Ohuhu Honolulu</h1>
+              <p class="app-subtitle">Meine Markersammlung · 320 Farben</p>
+            </div>
+            ${renderAuthBar()}
+          </div>
+          <div class="progress-row">
+            <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+            <span class="progress-label">${count} / ${MARKERS.length} · ${pct}%</span>
+            <span class="progress-label refill-label">Nachfüller: ${rCount} / ${count}</span>
+          </div>
+          <div class="view-toggle">
+            <button id="btn-numeric"  class="toggle-btn" onclick="setView('numeric')">Nummerisch</button>
+            <button id="btn-groups"   class="toggle-btn" onclick="setView('groups')">Farbgruppen</button>
+            <button id="btn-wishlist" class="toggle-btn" onclick="setView('wishlist')">Einkaufsliste${wishlistCount() ? ` (${wishlistCount()})` : ''}</button>
+            <button id="btn-table"    class="toggle-btn" onclick="setView('table')">Tabelle</button>
+          </div>
+        </div>`;
+    }
+
+    const PENCILS_BY_NR = Object.fromEntries(PENCILS.map(p => [p.nr, p]));
+
+    const ICON_REFILL_EMPTY = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.8-4-4-6.5c-.2 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>`;
+    const ICON_REFILL_FULL  = `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.8-4-4-6.5c-.2 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>`;
+
+    const ICON_CART = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>`;
+
+    function renderTile(m) {
+      const owned    = isOwned(m.code);
+      const refill   = isRefill(m.code);
+      const wishlist = isWishlist(m.code);
+      const badge    = owned ? `<div class="tile-badge">✓</div>` : '';
+      const refillBadge = owned
+        ? `<div class="tile-refill-badge${refill ? ' tile-refill-badge--owned' : ''}" onclick="event.stopPropagation();toggleRefill('${m.code}')" data-tooltip="Nachfüller ${refill ? 'vorhanden' : 'nicht vorhanden'}">${refill ? ICON_REFILL_FULL : ICON_REFILL_EMPTY}</div>`
+        : '';
+      const cartBadge = `<div class="tile-cart-badge${wishlist ? ' tile-cart-badge--active' : ''}" onclick="event.stopPropagation();toggleWishlist('${m.code}')" data-tooltip="${wishlist ? 'Von Einkaufsliste entfernen' : 'Zur Einkaufsliste hinzufügen'}">${ICON_CART}</div>`;
+      const refillCartIcon = isRefillCart(m.code)
+        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.8-4-4-6.5c-.2 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/><line x1="12" y1="12" x2="12" y2="18" stroke="white" stroke-width="2"/><line x1="9" y1="15" x2="15" y2="15" stroke="white" stroke-width="2"/></svg>`
+        : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.8-4-4-6.5c-.2 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`;
+      const refillCartBadge = `<div class="tile-cart-badge tile-cart-badge--br${isRefillCart(m.code) ? ' tile-cart-badge--active' : ''}" onclick="event.stopPropagation();toggleRefillCart('${m.code}')" data-tooltip="${isRefillCart(m.code) ? 'Nachfüller von Liste entfernen' : 'Nachfüller auf Einkaufsliste'}">${refillCartIcon}</div>`;
+      const manualPolyNr = polyReverseMap[m.code];
+      const polyNr = manualPolyNr || m.nearestPoly;
+      const pencil = polyNr ? PENCILS_BY_NR[polyNr] : null;
+      const isAutoMatch = pencil && !manualPolyNr;
+      const polyLink = pencil
+        ? `<div class="tile-poly-link${isAutoMatch ? ' tile-poly-link--auto' : ''}" title="${isAutoMatch ? 'Nächstgelegene' : ''} Polychromos ${pencil.nr} · ${pencil.name}">${isAutoMatch ? '≈' : ''}P·${pencil.nr}</div>`
+        : '';
+      const titlePolyNote = pencil
+        ? ` · ${isAutoMatch ? '≈ nächste' : '≡'} Polychromos ${pencil.nr} ${pencil.name}`
+        : '';
+      return `<div
+        class="tile${owned ? '' : ' tile--unowned'}"
+        onclick="toggleOwned('${m.code}')"
+        title="${m.name} · ${m.code}${titlePolyNote}"
+        style="background:${hardGradient(m.colors, 180)}">
+        <div class="${codeClass(m.code)}">${m.code}</div>
+        <div class="tile-name">${m.name}</div>
+        ${badge}
+        ${refillBadge}
+        ${cartBadge}
+        ${refillCartBadge}
+        ${polyLink}
+      </div>`;
+    }
+
+    function groupGradient(codes, byCode) {
+      const colors = codes.map(c => byCode[c]?.colors[2]).filter(Boolean);
+      const n = 10;
+      const samples = colors.length <= n
+        ? colors
+        : Array.from({length: n}, (_, i) => colors[Math.floor(i * colors.length / n)]);
+      return `linear-gradient(90deg, ${samples.join(', ')})`;
+    }
+
+    function renderNumeric() {
+      return `<div class="tile-grid">${MARKERS.map(m => renderTile(m)).join('')}</div>`;
+    }
+
+    function renderGroups() {
+      const byCode = Object.fromEntries(MARKERS.map(m => [m.code, m]));
+      return OHUHU_GROUPS.map(g => `
+        <div class="color-group">
+          <div class="group-gradient" style="background:${groupGradient(g.codes, byCode)}"></div>
+          <h2 class="group-heading">${g.label}</h2>
+          <div class="tile-grid">${g.codes.map(c => byCode[c] ? renderTile(byCode[c]) : '').join('')}</div>
+        </div>`).join('');
+    }
+
+    function renderShoppingList() {
+      const markers  = MARKERS.filter(m => isWishlist(m.code));
+      const refills  = MARKERS.filter(m => isRefillCart(m.code));
+      if (!markers.length && !refills.length)
+        return `<p class="shopping-empty">Keine Einträge auf der Einkaufsliste.<br>Tippe auf einen Warenkorb auf einer Kachel um sie hinzuzufügen.</p>`;
+      const renderItems = (items, toggle) => items.map(m => `
+        <div class="shopping-item" onclick="${toggle}('${m.code}')" title="Von Liste entfernen">
+          <div class="shopping-swatch" style="background:${m.colors[2]}"></div>
+          <span class="shopping-code">${m.code}</span>
+          <span class="shopping-name">${m.name}</span>
+        </div>`).join('');
+      return `
+        ${markers.length ? `<h2 class="group-heading">Marker</h2><div class="shopping-list">${renderItems(markers, 'toggleWishlist')}</div>` : ''}
+        ${refills.length ? `<h2 class="group-heading" style="margin-top:24px">Nachfüller</h2><div class="shopping-list">${renderItems(refills, 'toggleRefillCart')}</div>` : ''}`;
+    }
+
+    const ICON_CHECK = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+    function renderTable() {
+      return `<div class="table-scroll"><table class="data-table">
+        <thead><tr>
+          <th></th>
+          <th>Code</th>
+          <th>Name</th>
+          <th data-tooltip="Besessen">` + ICON_CHECK + `</th>
+          <th data-tooltip="Nachfüller vorhanden">` + ICON_REFILL_FULL + `</th>
+          <th data-tooltip="Marker kaufen">` + ICON_CART + `</th>
+          <th data-tooltip="Nachfüller kaufen">` + ICON_CART + `+</th>
+        </tr></thead>
+        <tbody>${MARKERS.map(m => {
+          const owned      = isOwned(m.code);
+          const refill     = isRefill(m.code);
+          const wishlist   = isWishlist(m.code);
+          const refillCart = isRefillCart(m.code);
+          return `<tr>
+            <td><div class="table-swatch" style="background:${hardGradient(m.colors, 90)}"></div></td>
+            <td>${m.code}</td>
+            <td>${m.name}</td>
+            <td><button class="table-icon-btn${owned ? ' table-icon-btn--active' : ''}" onclick="toggleOwned('${m.code}')" data-tooltip="${owned ? 'Besessen' : 'Nicht besessen'}">${ICON_CHECK}</button></td>
+            <td><button class="table-icon-btn${refill ? ' table-icon-btn--active' : ''}" onclick="toggleRefill('${m.code}')" data-tooltip="${refill ? 'Nachfüller vorhanden' : 'Kein Nachfüller'}">${ICON_REFILL_FULL}</button></td>
+            <td><button class="table-icon-btn${wishlist ? ' table-icon-btn--green' : ''}" onclick="toggleWishlist('${m.code}')" data-tooltip="${wishlist ? 'Auf der Einkaufsliste' : 'Zur Einkaufsliste'}">${ICON_CART}</button></td>
+            <td><button class="table-icon-btn${refillCart ? ' table-icon-btn--green' : ''}" onclick="toggleRefillCart('${m.code}')" data-tooltip="${refillCart ? 'Nachfüller auf Liste' : 'Nachfüller kaufen'}">${ICON_REFILL_FULL}</button></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`;
+    }
+
+    function renderAll() {
+      const app = document.getElementById('app');
+      app.innerHTML = renderHeader() +
+        (currentView === 'groups'   ? renderGroups() :
+         currentView === 'wishlist' ? renderShoppingList() :
+         currentView === 'table'    ? renderTable() :
+         renderNumeric());
+      document.getElementById('btn-numeric').className  = `toggle-btn toggle-btn--${currentView === 'numeric'  ? 'active' : 'inactive'}`;
+      document.getElementById('btn-groups').className   = `toggle-btn toggle-btn--${currentView === 'groups'   ? 'active' : 'inactive'}`;
+      document.getElementById('btn-wishlist').className = `toggle-btn toggle-btn--${currentView === 'wishlist' ? 'active' : 'inactive'}`;
+      document.getElementById('btn-table').className    = `toggle-btn toggle-btn--${currentView === 'table'    ? 'active' : 'inactive'}`;
+    }
+
+    renderAll();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW:', e));
+    }
+
+    // ── Theme toggle ──────────────────────────────────────────────────────────
+    const themeToggle = document.getElementById('themeToggle');
+    const ICON_SUN  = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>`;
+    const ICON_MOON = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      themeToggle.innerHTML = theme === 'dark' ? ICON_SUN : ICON_MOON;
+      localStorage.setItem('colortracker_theme', theme);
+    }
+    applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
+    themeToggle.addEventListener('click', () => {
+      applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
