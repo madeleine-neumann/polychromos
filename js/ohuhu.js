@@ -318,18 +318,30 @@
       return `linear-gradient(90deg, ${samples.join(', ')})`;
     }
 
+    function compareCode(a, b) {
+      const [, pa, na] = a.match(/^([A-Za-z]*)(\d*)$/);
+      const [, pb, nb] = b.match(/^([A-Za-z]*)(\d*)$/);
+      if (pa !== pb) return pa.localeCompare(pb);
+      return (parseInt(na, 10) || 0) - (parseInt(nb, 10) || 0);
+    }
+
+    const MARKERS_SORTED = [...MARKERS].sort((a, b) => compareCode(a.code, b.code));
+
     function renderNumeric() {
-      return `<div class="tile-grid">${MARKERS.map(m => renderTile(m)).join('')}</div>`;
+      return `<div class="tile-grid">${MARKERS_SORTED.map(m => renderTile(m)).join('')}</div>`;
     }
 
     function renderGroups() {
       const byCode = Object.fromEntries(MARKERS.map(m => [m.code, m]));
-      return OHUHU_GROUPS.map(g => `
+      return OHUHU_GROUPS.map(g => {
+        const codes = [...g.codes].sort(compareCode);
+        return `
         <div class="color-group">
-          <div class="group-gradient" style="background:${groupGradient(g.codes, byCode)}"></div>
+          <div class="group-gradient" style="background:${groupGradient(codes, byCode)}"></div>
           <h2 class="group-heading">${g.label}</h2>
-          <div class="tile-grid">${g.codes.map(c => byCode[c] ? renderTile(byCode[c]) : '').join('')}</div>
-        </div>`).join('');
+          <div class="tile-grid">${codes.map(c => byCode[c] ? renderTile(byCode[c]) : '').join('')}</div>
+        </div>`;
+      }).join('');
     }
 
     function renderShoppingList() {
@@ -361,7 +373,7 @@
           <th data-tooltip="Marker kaufen">` + ICON_CART + `</th>
           <th data-tooltip="Nachfüller kaufen">` + ICON_CART + `+</th>
         </tr></thead>
-        <tbody>${MARKERS.map(m => {
+        <tbody>${MARKERS_SORTED.map(m => {
           const owned      = isOwned(m.code);
           const refill     = isRefill(m.code);
           const wishlist   = isWishlist(m.code);
