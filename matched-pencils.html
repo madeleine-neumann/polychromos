@@ -55,7 +55,7 @@
       return [p.nr, { code: best.code, name: best.name, dist: bestDist }];
     }));
 
-    // ── State (nur lesend) ───────────────────────────────────────────────────
+    // ── State ─────────────────────────────────────────────────────────────────
     function readJSON(key) {
       try { return JSON.parse(localStorage.getItem(key)) || {}; }
       catch { return {}; }
@@ -65,6 +65,7 @@
 
     function isPencilOwned(nr)  { return !!(polyState[nr]?.owned); }
     function isMarkerOwned(code){ return !!(ohuhuState[code]?.owned); }
+    function isMarkerWishlisted(code) { return !!(ohuhuState[code]?.wishlist); }
     function matchedCode(nr) {
       return polyState[nr]?.ohuhu || NEAREST_OHUHU_BY_NR[nr]?.code || '';
     }
@@ -76,9 +77,91 @@
       renderAll();
     }
 
+    function broadcastUpdate() {
+      try { new BroadcastChannel('polychromos-sync').postMessage({ type: 'updated', source: 'matched-pencils' }); } catch {}
+    }
+
+    function toggleOhuhuWishlist(code) {
+      ohuhuState[code] = ohuhuState[code] || {};
+      ohuhuState[code].wishlist = !ohuhuState[code].wishlist;
+      localStorage.setItem('ohuhu_data', JSON.stringify(ohuhuState));
+      broadcastUpdate();
+      scheduleGistSave();
+      renderAll();
+    }
+
+    // ── Shared Gist Sync (nur Ohuhu-Einkaufsliste schreiben, Rest lesend) ──────
+    const TOKEN_KEY  = 'polychromos_gh_token';
+    const SHARED_KEY = 'shared_gist_id';
+    const POLY_FILE  = 'polychromos_data.json';
+    const OHUHU_FILE = 'ohuhu_data.json';
+    const GH_API     = 'https://api.github.com';
+
+    let githubToken = localStorage.getItem(TOKEN_KEY) || '';
+    let gistId      = localStorage.getItem(SHARED_KEY) || '';
+    let syncTimer   = null;
+
+    function ghHeaders() {
+      return { Authorization: `Bearer ${githubToken}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' };
+    }
+
+    async function ensureGistId() {
+      if (gistId) return;
+      const r = await fetch(`${GH_API}/gists?per_page=100`, { headers: ghHeaders() });
+      if (!r.ok) throw new Error('Token ungültig');
+      const gists = await r.json();
+      const found = gists.find(g => g.files[POLY_FILE] && g.files[OHUHU_FILE])
+        || gists.find(g => g.files[POLY_FILE])
+        || gists.find(g => g.files[OHUHU_FILE]);
+      if (!found) return; // keine passende Gist gefunden — Sync bleibt lokal
+      gistId = found.id;
+      localStorage.setItem(SHARED_KEY, gistId);
+    }
+
+    async function loadFromGist() {
+      if (!githubToken) return;
+      try {
+        await ensureGistId();
+        if (!gistId) return;
+        const r = await fetch(`${GH_API}/gists/${gistId}`, { headers: ghHeaders() });
+        if (!r.ok) throw new Error();
+        const data = await r.json();
+        const ohuhuContent = data.files[OHUHU_FILE]?.content;
+        if (ohuhuContent) {
+          const gistState  = JSON.parse(ohuhuContent);
+          const gistOwned  = Object.values(gistState).filter(v => v?.owned).length;
+          const localOwned = Object.values(ohuhuState).filter(v => v?.owned).length;
+          if (!(gistOwned === 0 && localOwned > 0)) {
+            ohuhuState = gistState;
+            localStorage.setItem('ohuhu_data', JSON.stringify(ohuhuState));
+          }
+        }
+        const polyContent = data.files[POLY_FILE]?.content;
+        if (polyContent) polyState = JSON.parse(polyContent);
+      } catch (e) { /* bleibt beim lokalen Stand */ }
+    }
+
+    async function saveToGist() {
+      if (!githubToken) return;
+      try {
+        await ensureGistId();
+        if (!gistId) return;
+        await fetch(`${GH_API}/gists/${gistId}`, {
+          method: 'PATCH', headers: ghHeaders(),
+          body: JSON.stringify({ files: { [OHUHU_FILE]: { content: JSON.stringify(ohuhuState) } } })
+        });
+      } catch (e) { /* still lokal gespeichert, nächster Sync versucht es erneut */ }
+    }
+
+    function scheduleGistSave() {
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(saveToGist, 1500);
+    }
+
     // ── Render ────────────────────────────────────────────────────────────────
     const ICON_CHECK = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
     const ICON_MISSING = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    const ICON_CART = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>`;
 
     function renderHeader(rows) {
       const ownedPencils = rows.filter(r => r.pencilOwned);
@@ -133,7 +216,9 @@
             <td><span class="table-icon-btn${r.pencilOwned ? ' table-icon-btn--active' : ''}">${r.pencilOwned ? ICON_CHECK : ICON_MISSING}</span></td>
             <td>${r.marker ? `<div class="table-swatch" style="background:${r.marker.colors[2]}"></div>` : ''}</td>
             <td>${r.marker ? `${r.marker.code} · ${r.marker.name}${r.auto ? ' <span class="ohuhu-match-inline ohuhu-match-inline--suggest" title="Automatischer Vorschlag, nicht manuell bestätigt">≈ auto</span>' : ''}` : '—'}</td>
-            <td><span class="table-icon-btn${r.markerOwned ? ' table-icon-btn--green' : ''}">${r.markerOwned ? ICON_CHECK : ICON_MISSING}</span></td>
+            <td>${r.markerOwned
+              ? `<span class="table-icon-btn table-icon-btn--green">${ICON_CHECK}</span>`
+              : (r.marker ? `<button class="table-icon-btn${r.wishlisted ? ' table-icon-btn--green' : ''}" onclick="toggleOhuhuWishlist('${r.marker.code}')" data-tooltip="${r.wishlisted ? 'Von Einkaufsliste entfernen' : 'Zur Einkaufsliste hinzufügen'}">${ICON_CART}</button>` : ICON_MISSING)}</td>
             <td>${r.dist != null ? r.dist.toFixed(0) : '—'}</td>
           </tr>`).join('')}</tbody>
       </table></div>`;
@@ -148,6 +233,7 @@
           pencilOwned: isPencilOwned(p.nr),
           marker,
           markerOwned: marker ? isMarkerOwned(marker.code) : false,
+          wishlisted: marker ? isMarkerWishlisted(marker.code) : false,
           auto: isAutoMatch(p.nr),
           dist: marker ? labDist(p.color, marker.colors[2]) : null,
         };
@@ -164,6 +250,7 @@
     }
 
     renderAll();
+    if (githubToken) loadFromGist().then(renderAll);
 
     // ── Cross-Tab Sync ────────────────────────────────────────────────────────
     try {
