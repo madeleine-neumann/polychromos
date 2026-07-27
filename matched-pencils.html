@@ -66,6 +66,7 @@
     function isPencilOwned(nr)  { return !!(polyState[nr]?.owned); }
     function isMarkerOwned(code){ return !!(ohuhuState[code]?.owned); }
     function isMarkerWishlisted(code) { return !!(ohuhuState[code]?.wishlist); }
+    function isMarkerRefillOwned(code) { return !!(ohuhuState[code]?.refill); }
     function matchedCode(nr) {
       return polyState[nr]?.ohuhu || NEAREST_OHUHU_BY_NR[nr]?.code || '';
     }
@@ -162,6 +163,7 @@
     const ICON_CHECK = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
     const ICON_MISSING = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
     const ICON_CART = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>`;
+    const ICON_REFILL = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.8-4-4-6.5c-.2 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>`;
 
     function renderHeader(rows) {
       const ownedPencils = rows.filter(r => r.pencilOwned);
@@ -215,13 +217,46 @@
             <td>${r.pencil.name}</td>
             <td><span class="table-icon-btn${r.pencilOwned ? ' table-icon-btn--active' : ''}">${r.pencilOwned ? ICON_CHECK : ICON_MISSING}</span></td>
             <td>${r.marker ? `<div class="table-swatch" style="background:${r.marker.colors[2]}"></div>` : ''}</td>
-            <td>${r.marker ? `${r.marker.code} · ${r.marker.name}${r.auto ? ' <span class="ohuhu-match-inline ohuhu-match-inline--suggest" title="Automatischer Vorschlag, nicht manuell bestätigt">≈ auto</span>' : ''}` : '—'}</td>
+            <td>${r.marker ? `${r.marker.shopUrl ? `<a href="${r.marker.shopUrl}" target="_blank" rel="noopener" style="color:inherit" data-tooltip="Im Ohuhu-Shop ansehen">${r.marker.code}</a>` : r.marker.code} · ${r.marker.name}${r.auto ? ' <span class="ohuhu-match-inline ohuhu-match-inline--suggest" title="Automatischer Vorschlag, nicht manuell bestätigt">≈ auto</span>' : ''}` : '—'}</td>
             <td>${r.markerOwned
               ? `<span class="table-icon-btn table-icon-btn--green">${ICON_CHECK}</span>`
               : (r.marker ? `<button class="table-icon-btn${r.wishlisted ? ' table-icon-btn--green' : ''}" onclick="toggleOhuhuWishlist('${r.marker.code}')" data-tooltip="${r.wishlisted ? 'Von Einkaufsliste entfernen' : 'Zur Einkaufsliste hinzufügen'}">${ICON_CART}</button>` : ICON_MISSING)}</td>
             <td>${r.dist != null ? r.dist.toFixed(0) : '—'}</td>
           </tr>`).join('')}</tbody>
       </table></div>`;
+    }
+
+    function renderRefillTable() {
+      const withRefill = MARKERS.filter(m => m.refillUrl).sort(compareCode);
+      return `
+        <h2 class="group-heading" style="margin-top:32px">Verfügbare Nachfüller im Shop (${withRefill.length} / ${MARKERS.length})</h2>
+        <div class="table-scroll"><table class="data-table">
+          <thead><tr>
+            <th></th><th>Code</th><th>Name</th>
+            <th data-tooltip="Marker besessen">` + ICON_CHECK + `</th>
+            <th data-tooltip="Nachfüller besessen">` + ICON_REFILL + `</th>
+            <th>Nachfüller</th>
+          </tr></thead>
+          <tbody>${withRefill.map(m => {
+            const owned = isMarkerOwned(m.code);
+            const refillOwned = isMarkerRefillOwned(m.code);
+            return `<tr>
+              <td><div class="table-swatch" style="background:${m.colors[2]}"></div></td>
+              <td><a href="${m.shopUrl}" target="_blank" rel="noopener" style="color:inherit" data-tooltip="Im Ohuhu-Shop ansehen">${m.code}</a></td>
+              <td>${m.name}</td>
+              <td><span class="table-icon-btn${owned ? ' table-icon-btn--active' : ''}">${owned ? ICON_CHECK : ICON_MISSING}</span></td>
+              <td><span class="table-icon-btn${refillOwned ? ' table-icon-btn--active' : ''}">${refillOwned ? ICON_CHECK : ICON_MISSING}</span></td>
+              <td><a class="table-icon-btn" href="${m.refillUrl}" target="_blank" rel="noopener" data-tooltip="Nachfüller im Shop kaufen">${ICON_CART}</a></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`;
+    }
+
+    function compareCode(a, b) {
+      const [, pa, na] = a.code.match(/^([A-Za-z]*)(\d*)$/);
+      const [, pb, nb] = b.code.match(/^([A-Za-z]*)(\d*)$/);
+      if (pa !== pb) return pa.localeCompare(pb);
+      return (parseInt(na, 10) || 0) - (parseInt(nb, 10) || 0);
     }
 
     function buildRows() {
@@ -243,7 +278,7 @@
     function renderAll() {
       const rows = buildRows();
       const app = document.getElementById('app');
-      app.innerHTML = renderHeader(rows) + renderTable(rows);
+      app.innerHTML = renderHeader(rows) + renderTable(rows) + renderRefillTable();
       ['all','owned','missing'].forEach(f => {
         document.getElementById(`btn-${f}`).className = `toggle-btn toggle-btn--${filter === f ? 'active' : 'inactive'}`;
       });

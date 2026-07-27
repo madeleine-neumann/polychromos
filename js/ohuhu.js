@@ -276,9 +276,11 @@
       const refill   = isRefill(m.code);
       const wishlist = isWishlist(m.code);
       const badge    = owned ? `<div class="tile-badge">✓</div>` : '';
-      const refillBadge = owned
-        ? `<div class="tile-refill-badge${refill ? ' tile-refill-badge--owned' : ''}" onclick="event.stopPropagation();toggleRefill('${m.code}')" data-tooltip="Nachfüller ${refill ? 'vorhanden' : 'nicht vorhanden'}">${refill ? ICON_REFILL_FULL : ICON_REFILL_EMPTY}</div>`
-        : '';
+      const refillBadge = !owned ? '' : (refill
+        ? `<div class="tile-refill-badge tile-refill-badge--owned" onclick="event.stopPropagation();toggleRefill('${m.code}')" data-tooltip="Nachfüller vorhanden · Klick zum Entfernen">${ICON_REFILL_FULL}</div>`
+        : (m.refillUrl
+          ? `<a class="tile-refill-badge" href="${m.refillUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" data-tooltip="Nachfüller im Shop kaufen">${ICON_REFILL_EMPTY}</a>`
+          : `<div class="tile-refill-badge" onclick="event.stopPropagation();toggleRefill('${m.code}')" data-tooltip="Kein Nachfüller im Shop verfügbar · Klick zum manuellen Markieren">${ICON_REFILL_EMPTY}</div>`));
       const cartBadge = `<div class="tile-cart-badge${wishlist ? ' tile-cart-badge--active' : ''}" onclick="event.stopPropagation();toggleWishlist('${m.code}')" data-tooltip="${wishlist ? 'Von Einkaufsliste entfernen' : 'Zur Einkaufsliste hinzufügen'}">${ICON_CART}</div>`;
       const refillCartIcon = isRefillCart(m.code)
         ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.8-4-4-6.5c-.2 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/><line x1="12" y1="12" x2="12" y2="18" stroke="white" stroke-width="2"/><line x1="9" y1="15" x2="15" y2="15" stroke="white" stroke-width="2"/></svg>`
@@ -299,7 +301,9 @@
         onclick="toggleOwned('${m.code}')"
         title="${m.name} · ${m.code}${titlePolyNote}"
         style="background:${hardGradient(m.colors, 180)}">
-        <div class="${codeClass(m.code)}">${m.code}</div>
+        ${m.shopUrl
+          ? `<a class="${codeClass(m.code)}" href="${m.shopUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" data-tooltip="Im Ohuhu-Shop ansehen">${m.code}</a>`
+          : `<div class="${codeClass(m.code)}">${m.code}</div>`}
         <div class="tile-name">${m.name}</div>
         ${badge}
         ${refillBadge}
@@ -372,6 +376,7 @@
           <th data-tooltip="Nachfüller vorhanden">` + ICON_REFILL_FULL + `</th>
           <th data-tooltip="Marker kaufen">` + ICON_CART + `</th>
           <th data-tooltip="Nachfüller kaufen">` + ICON_CART + `+</th>
+          <th data-tooltip="Nachfüller im Ohuhu-Shop">` + ICON_REFILL_FULL + `↗</th>
         </tr></thead>
         <tbody>${MARKERS_SORTED.map(m => {
           const owned      = isOwned(m.code);
@@ -380,12 +385,13 @@
           const refillCart = isRefillCart(m.code);
           return `<tr>
             <td><div class="table-swatch" style="background:${hardGradient(m.colors, 90)}"></div></td>
-            <td>${m.code}</td>
+            <td>${m.shopUrl ? `<a href="${m.shopUrl}" target="_blank" rel="noopener" style="color:inherit" data-tooltip="Im Ohuhu-Shop ansehen">${m.code}</a>` : m.code}</td>
             <td>${m.name}</td>
             <td><button class="table-icon-btn${owned ? ' table-icon-btn--active' : ''}" onclick="toggleOwned('${m.code}')" data-tooltip="${owned ? 'Besessen' : 'Nicht besessen'}">${ICON_CHECK}</button></td>
             <td><button class="table-icon-btn${refill ? ' table-icon-btn--active' : ''}" onclick="toggleRefill('${m.code}')" data-tooltip="${refill ? 'Nachfüller vorhanden' : 'Kein Nachfüller'}">${ICON_REFILL_FULL}</button></td>
             <td><button class="table-icon-btn${wishlist ? ' table-icon-btn--green' : ''}" onclick="toggleWishlist('${m.code}')" data-tooltip="${wishlist ? 'Auf der Einkaufsliste' : 'Zur Einkaufsliste'}">${ICON_CART}</button></td>
             <td><button class="table-icon-btn${refillCart ? ' table-icon-btn--green' : ''}" onclick="toggleRefillCart('${m.code}')" data-tooltip="${refillCart ? 'Nachfüller auf Liste' : 'Nachfüller kaufen'}">${ICON_REFILL_FULL}</button></td>
+            <td>${m.refillUrl ? `<a class="table-icon-btn" href="${m.refillUrl}" target="_blank" rel="noopener" data-tooltip="Nachfüller im Ohuhu-Shop kaufen">${ICON_CART}</a>` : ''}</td>
           </tr>`;
         }).join('')}</tbody>
       </table></div>`;
