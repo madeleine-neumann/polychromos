@@ -217,10 +217,11 @@
       'missing-poly':   'Fehlender Polychromos-Stift',
     };
 
-    function renderHeader(rows) {
-      const eitherOwned = rows.filter(r => r.pencilOwned || r.markerOwned);
-      const complete = eitherOwned.filter(r => r.pencilOwned && r.markerOwned);
-      const missing = eitherOwned.length - complete.length;
+    function renderHeader(forwardRows, reverseRows) {
+      const complete = forwardRows.filter(r => r.pencilOwned && r.markerOwned).length;
+      const missingOhuhu = forwardRows.filter(r => r.pencilOwned && !r.markerOwned).length;
+      const missingPoly = reverseRows.filter(r => !r.pencilOwned).length;
+      const total = complete + missingOhuhu + missingPoly;
       return `
         <div class="app-header">
           <div class="header-top">
@@ -230,9 +231,9 @@
             </div>
           </div>
           <div class="progress-row">
-            <div class="progress-bar"><div class="progress-fill" style="width:${eitherOwned.length ? Math.round(complete.length/eitherOwned.length*100) : 0}%"></div></div>
-            <span class="progress-label">${complete.length} / ${eitherOwned.length} Zwillinge vorhanden</span>
-            <span class="progress-label refill-label">${missing} fehlen noch</span>
+            <div class="progress-bar"><div class="progress-fill" style="width:${total ? Math.round(complete/total*100) : 0}%"></div></div>
+            <span class="progress-label">${complete} / ${total} Zwillinge vorhanden</span>
+            <span class="progress-label refill-label">${missingOhuhu} Marker fehlen · ${missingPoly} Stifte fehlen</span>
           </div>
           <details class="view-select">
             <summary class="view-select-current">
@@ -252,13 +253,12 @@
     let filter = 'missing-ohuhu';
     function setFilter(f) { filter = f; renderAll(); }
 
-    function renderTable(rows) {
-      const filtered = rows.filter(r => {
-        if (filter === 'owned')           return r.pencilOwned && r.markerOwned;
-        if (filter === 'missing-ohuhu')   return r.pencilOwned && !r.markerOwned;
-        if (filter === 'missing-poly')    return r.markerOwned && !r.pencilOwned;
-        return true;
-      });
+    function renderTable(forwardRows, reverseRows) {
+      const filtered =
+        filter === 'missing-poly' ? reverseRows.filter(r => !r.pencilOwned) :
+        filter === 'owned'        ? forwardRows.filter(r => r.pencilOwned && r.markerOwned) :
+        filter === 'missing-ohuhu'? forwardRows.filter(r => r.pencilOwned && !r.markerOwned) :
+        forwardRows;
       if (!filtered.length) {
         return `<p class="shopping-empty">Keine Einträge für diesen Filter.</p>`;
       }
@@ -310,12 +310,13 @@
       });
     }
 
-    // Abgleich in Gegenrichtung: besessene Ohuhu-Marker, deren nächstgelegener
-    // Polychromos-Stift in der Hinrichtung von keinem Stift als Zwilling erreicht wird.
-    function buildReverseRows(forwardRows) {
-      const coveredMarkerCodes = new Set(forwardRows.filter(r => r.marker).map(r => r.marker.code));
+    // Abgleich in Gegenrichtung: für jeden besessenen Ohuhu-Marker dessen eigener
+    // nächstgelegener Polychromos-Stift (kanonisch aus Marker-Sicht, nicht aus
+    // Stift-Sicht — sonst würden mehrere Stifte denselben Marker fälschlich als
+    // "fehlender Stift" beanspruchen, wenn er nur zufällig auch ihr Nächstgelegener ist).
+    function buildReverseRows() {
       return MARKERS
-        .filter(m => isMarkerOwned(m.code) && !coveredMarkerCodes.has(m.code))
+        .filter(m => isMarkerOwned(m.code))
         .map(m => {
           const nr = matchedPencilNr(m.code);
           const pencil = nr != null ? PENCILS_BY_NR[nr] : null;
@@ -336,9 +337,9 @@
 
     function renderAll() {
       const forwardRows = buildRows();
-      const allRows = [...forwardRows, ...buildReverseRows(forwardRows)];
+      const reverseRows = buildReverseRows();
       const app = document.getElementById('app');
-      app.innerHTML = renderHeader(allRows) + renderTable(allRows);
+      app.innerHTML = renderHeader(forwardRows, reverseRows) + renderTable(forwardRows, reverseRows);
     }
 
     renderAll();
