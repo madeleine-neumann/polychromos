@@ -180,11 +180,20 @@
       syncTimer = setTimeout(saveToGist, 1500);
     }
 
+    function syncStatusMarkup(status) {
+      const map = {
+        idle: '',
+        syncing: `${ICON_SYNCING} Speichert…`,
+        synced: `${ICON_CLOUD} Gespeichert`,
+        error: `${ICON_WARN} Fehler`,
+      };
+      return map[status] || '';
+    }
+
     function updateSyncUI() {
       const el = document.getElementById('sync-status');
       if (!el) return;
-      const map = { idle: '', syncing: '⏳', synced: '☁ gespeichert', error: '⚠ Fehler' };
-      el.textContent = map[syncStatus] || '';
+      el.innerHTML = syncStatusMarkup(syncStatus);
     }
 
     if (githubToken) loadFromGist().then(() => renderAll());
@@ -224,8 +233,8 @@
       if (githubToken) {
         return `
           <div class="auth-bar">
-            <span id="sync-status" class="sync-label">${{idle:'',syncing:'⏳',synced:'☁ gespeichert',error:'⚠ Fehler'}[syncStatus]||''}</span>
-            <span class="connected-badge">✓ GitHub</span>
+            <span id="sync-status" class="sync-label">${syncStatusMarkup(syncStatus)}</span>
+            <span class="connected-badge">${ICON_CHECK} GitHub</span>
             <button class="auth-btn" onclick="disconnectGist()">Trennen</button>
           </div>`;
       }
@@ -245,7 +254,7 @@
         <div class="app-header">
           <div class="header-top">
             <div>
-              <h1 class="app-title">🖊 Ohuhu Honolulu</h1>
+              <h1 class="app-title">${ICON_MARKER}<span class="app-title-text">Ohuhu Honolulu</span></h1>
               <p class="app-subtitle">Meine Markersammlung · 320 Farben</p>
             </div>
             ${renderAuthBar()}
@@ -267,6 +276,12 @@
 
     const PENCILS_BY_NR = Object.fromEntries(PENCILS.map(p => [p.nr, p]));
 
+    const ICON_MARKER = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>`;
+    const ICON_SYNCING = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>`;
+    const ICON_CLOUD = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h.79a4.5 4.5 0 1 1 0 9z"/></svg>`;
+    const ICON_WARN = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+    const ICON_EXTERNAL = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>`;
+
     const ICON_REFILL_EMPTY = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.8-4-4-6.5c-.2 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>`;
     const ICON_REFILL_FULL  = `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.8-4-4-6.5c-.2 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>`;
 
@@ -276,7 +291,7 @@
       const owned    = isOwned(m.code);
       const refill   = isRefill(m.code);
       const wishlist = isWishlist(m.code);
-      const badge    = owned ? `<div class="tile-badge">✓</div>` : '';
+      const badge    = owned ? `<div class="tile-badge">${ICON_CHECK}</div>` : '';
       const refillBadge = !owned ? '' : (refill
         ? `<div class="tile-refill-badge tile-refill-badge--owned" onclick="event.stopPropagation();toggleRefill('${m.code}')" data-tooltip="Nachfüller vorhanden · Klick zum Entfernen">${ICON_REFILL_FULL}</div>`
         : (m.refillUrl
@@ -377,7 +392,7 @@
           <th data-tooltip="Nachfüller vorhanden">` + ICON_REFILL_FULL + `</th>
           <th data-tooltip="Marker kaufen">` + ICON_CART + `</th>
           <th data-tooltip="Nachfüller kaufen">` + ICON_CART + `+</th>
-          <th data-tooltip="Nachfüller im Ohuhu-Shop">` + ICON_REFILL_FULL + `↗</th>
+          <th data-tooltip="Nachfüller im Ohuhu-Shop">` + ICON_REFILL_FULL + ICON_EXTERNAL + `</th>
         </tr></thead>
         <tbody>${MARKERS_SORTED.map(m => {
           const owned      = isOwned(m.code);
