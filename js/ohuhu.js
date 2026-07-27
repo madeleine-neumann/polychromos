@@ -260,6 +260,7 @@
             <button id="btn-groups"   class="toggle-btn" onclick="setView('groups')">Farbgruppen</button>
             <button id="btn-wishlist" class="toggle-btn" onclick="setView('wishlist')">Einkaufsliste${wishlistCount() ? ` (${wishlistCount()})` : ''}</button>
             <button id="btn-table"    class="toggle-btn" onclick="setView('table')">Tabelle</button>
+            <button id="btn-shoprefill" class="toggle-btn" onclick="setView('shoprefill')">Nachfüller im Shop</button>
           </div>
         </div>`;
     }
@@ -397,17 +398,45 @@
       </table></div>`;
     }
 
+    function renderShopRefillTable() {
+      const withRefill = MARKERS_SORTED.filter(m => m.refillUrl);
+      return `
+        <h2 class="group-heading">Nachfüller im Shop verfügbar (${withRefill.length} / ${MARKERS.length})</h2>
+        <div class="table-scroll"><table class="data-table">
+          <thead><tr>
+            <th></th><th>Code</th><th>Name</th>
+            <th data-tooltip="Marker besessen">` + ICON_CHECK + `</th>
+            <th data-tooltip="Nachfüller besessen">` + ICON_REFILL_FULL + `</th>
+            <th>Nachfüller</th>
+          </tr></thead>
+          <tbody>${withRefill.map(m => {
+            const owned  = isOwned(m.code);
+            const refill = isRefill(m.code);
+            return `<tr>
+              <td><div class="table-swatch" style="background:${hardGradient(m.colors, 90)}"></div></td>
+              <td><a href="${m.shopUrl}" target="_blank" rel="noopener" style="color:inherit" data-tooltip="Im Ohuhu-Shop ansehen">${m.code}</a></td>
+              <td>${m.name}</td>
+              <td><span class="table-icon-btn${owned ? ' table-icon-btn--active' : ''}">${ICON_CHECK}</span></td>
+              <td><span class="table-icon-btn${refill ? ' table-icon-btn--active' : ''}">${ICON_REFILL_FULL}</span></td>
+              <td><a class="table-icon-btn" href="${m.refillUrl}" target="_blank" rel="noopener" data-tooltip="Nachfüller im Shop kaufen">${ICON_CART}</a></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`;
+    }
+
     function renderAll() {
       const app = document.getElementById('app');
       app.innerHTML = renderHeader() +
-        (currentView === 'groups'   ? renderGroups() :
-         currentView === 'wishlist' ? renderShoppingList() :
-         currentView === 'table'    ? renderTable() :
+        (currentView === 'groups'     ? renderGroups() :
+         currentView === 'wishlist'   ? renderShoppingList() :
+         currentView === 'table'      ? renderTable() :
+         currentView === 'shoprefill' ? renderShopRefillTable() :
          renderNumeric());
       document.getElementById('btn-numeric').className  = `toggle-btn toggle-btn--${currentView === 'numeric'  ? 'active' : 'inactive'}`;
       document.getElementById('btn-groups').className   = `toggle-btn toggle-btn--${currentView === 'groups'   ? 'active' : 'inactive'}`;
       document.getElementById('btn-wishlist').className = `toggle-btn toggle-btn--${currentView === 'wishlist' ? 'active' : 'inactive'}`;
       document.getElementById('btn-table').className    = `toggle-btn toggle-btn--${currentView === 'table'    ? 'active' : 'inactive'}`;
+      document.getElementById('btn-shoprefill').className = `toggle-btn toggle-btn--${currentView === 'shoprefill' ? 'active' : 'inactive'}`;
     }
 
     renderAll();

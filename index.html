@@ -183,18 +183,6 @@
       saveState(); broadcastUpdate(); scheduleGistSave();
     }
 
-    // Überschreibt ALLE Ohuhu-Zuordnungen mit dem farblich nächstgelegenen Marker (ΔE-basiert)
-    function recomputeAllOhuhuMatches() {
-      PENCILS.forEach(p => {
-        const nearest = NEAREST_OHUHU_BY_NR[p.nr];
-        if (!nearest) return;
-        state[p.nr] = state[p.nr] || {};
-        state[p.nr].ohuhu = nearest.code;
-        state[p.nr].ohuhuAuto = true;
-      });
-      saveState(); broadcastUpdate(); scheduleGistSave(); renderAll();
-    }
-
     function setView(view) {
       currentView = view;
       localStorage.setItem('polychromos_view', view);
@@ -364,7 +352,6 @@
             <button id="btn-groups"   class="toggle-btn" onclick="setView('groups')">Farbgruppen</button>
             <button id="btn-wishlist" class="toggle-btn" onclick="setView('wishlist')">Einkaufsliste${wishlistCount() ? ` (${wishlistCount()})` : ''}</button>
             <button id="btn-table"    class="toggle-btn" onclick="setView('table')">Tabelle</button>
-            <button class="toggle-btn" style="margin-left:auto" onclick="recomputeAllOhuhuMatches()" data-tooltip="Alle Ohuhu-Zuordnungen anhand der Hex-Werte neu berechnen (überschreibt aktuelle Auswahl)">🔄 Ohuhu neu zuordnen</button>
           </div>
         </div>`;
     }
@@ -380,10 +367,13 @@
       return `<div
         class="tile${owned ? '' : ' tile--unowned'}"
         onclick="toggleOwned(${p.nr})"
-        title="${p.name} · Nr. ${p.nr} · ${p.lf}"
+        title="${p.name} · Nr. ${p.nr} · ${p.lf}${p.inStock === false ? ' · vergriffen' : ''}"
         style="background:linear-gradient(160deg,${p.color},${darken(p.color)})">
-        <div class="tile-code">${p.nr}</div>
+        ${p.shopUrl
+          ? `<a class="tile-code" href="${p.shopUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" data-tooltip="Im Kunstpark-Shop ansehen">${p.nr}</a>`
+          : `<div class="tile-code">${p.nr}</div>`}
         <div class="tile-name">${p.name}</div>
+        ${p.inStock === false ? `<div class="tile-refill-badge" style="color:#f87171" data-tooltip="Aktuell vergriffen im Shop">⊘</div>` : ''}
         ${cartBadge}
         ${ohuhuMatchBadge(p.nr)}
         ${ohuhuSelect(p.nr)}
@@ -423,6 +413,9 @@
           <div class="shopping-swatch" style="background:${p.color}"></div>
           <span class="shopping-code">Nr. ${p.nr}</span>
           <span class="shopping-name">${p.name}</span>
+          ${p.inStock === false
+            ? `<span class="ohuhu-match-inline" style="margin-left:auto" title="Aktuell vergriffen im Shop">vergriffen</span>`
+            : (p.shopUrl ? `<span class="ohuhu-match-inline ohuhu-match-inline--suggest" style="margin-left:auto" title="Verfügbar im Shop">verfügbar</span>` : '')}
         </div>`).join('')}</div>`;
     }
 
@@ -445,8 +438,8 @@
           const ohuhu    = getOhuhu(p.nr);
           return `<tr>
             <td><div class="table-swatch" style="background:${p.color}"></div></td>
-            <td>${p.nr}</td>
-            <td>${p.name}</td>
+            <td>${p.shopUrl ? `<a href="${p.shopUrl}" target="_blank" rel="noopener" style="color:inherit" data-tooltip="Im Kunstpark-Shop ansehen">${p.nr}</a>` : p.nr}</td>
+            <td>${p.name}${p.inStock === false ? ' <span class="ohuhu-match-inline" title="Aktuell vergriffen im Shop">vergriffen</span>' : ''}</td>
             <td class="table-lf">${p.lf}</td>
             <td><button class="table-icon-btn${owned ? ' table-icon-btn--active' : ''}" onclick="toggleOwned(${p.nr})" data-tooltip="${owned ? 'Besessen' : 'Nicht besessen'}">${ICON_CHECK}</button></td>
             <td><button class="table-icon-btn${wishlist ? ' table-icon-btn--green' : ''}" onclick="toggleWishlist(${p.nr})" data-tooltip="${wishlist ? 'Auf der Einkaufsliste' : 'Zur Einkaufsliste hinzufügen'}">${ICON_CART}</button></td>
