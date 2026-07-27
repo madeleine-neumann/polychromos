@@ -22,14 +22,13 @@
     function isWishlist(code)    { return !!(state[code]?.wishlist); }
     function isRefillCart(code)  { return !!(state[code]?.refillCart); }
     function ownedCount()        { return MARKERS.filter(m => isOwned(m.code)).length; }
-    function refillCount()       { return MARKERS.filter(m => isOwned(m.code) && isRefill(m.code)).length; }
+    function refillCount()       { return MARKERS.filter(m => isRefill(m.code)).length; }
     function wishlistCount()     { return MARKERS.filter(m => isWishlist(m.code)).length; }
     function refillCartCount()   { return MARKERS.filter(m => isRefillCart(m.code)).length; }
 
     function toggleOwned(code) {
       state[code] = state[code] || {};
       state[code].owned = !state[code].owned;
-      if (!state[code].owned) state[code].refill = false;
       saveState(); broadcastUpdate(); scheduleGistSave(); renderAll();
     }
 
@@ -264,7 +263,7 @@
           <div class="progress-row">
             <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
             <span class="progress-label">${count} / ${MARKERS.length} · ${pct}%</span>
-            <span class="progress-label refill-label">Nachfüller: ${rCount} / ${count}</span>
+            <span class="progress-label refill-label">Nachfüller: ${rCount}</span>
           </div>
           <details class="view-select">
             <summary class="view-select-current">
@@ -301,11 +300,11 @@
       const refill   = isRefill(m.code);
       const wishlist = isWishlist(m.code);
       const badge    = owned ? `<div class="tile-badge">${ICON_CHECK}</div>` : '';
-      const refillBadge = !owned ? '' : (refill
+      const refillBadge = refill
         ? `<div class="tile-refill-badge tile-refill-badge--owned" onclick="event.stopPropagation();toggleRefill('${m.code}')" data-tooltip="Nachfüller vorhanden · Klick zum Entfernen">${ICON_REFILL_FULL}</div>`
         : (m.refillUrl
           ? `<a class="tile-refill-badge" href="${m.refillUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" data-tooltip="Nachfüller im Shop kaufen">${ICON_REFILL_EMPTY}</a>`
-          : `<div class="tile-refill-badge" onclick="event.stopPropagation();toggleRefill('${m.code}')" data-tooltip="Kein Nachfüller im Shop verfügbar · Klick zum manuellen Markieren">${ICON_REFILL_EMPTY}</div>`));
+          : `<div class="tile-refill-badge" onclick="event.stopPropagation();toggleRefill('${m.code}')" data-tooltip="Kein Nachfüller im Shop verfügbar · Klick zum manuellen Markieren">${ICON_REFILL_EMPTY}</div>`);
       const cartBadge = `<div class="tile-cart-badge${wishlist ? ' tile-cart-badge--active' : ''}" onclick="event.stopPropagation();toggleWishlist('${m.code}')" data-tooltip="${wishlist ? 'Von Einkaufsliste entfernen' : 'Zur Einkaufsliste hinzufügen'}">${ICON_CART}</div>`;
       const refillCartIcon = isRefillCart(m.code)
         ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.8-4-4-6.5c-.2 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/><line x1="12" y1="12" x2="12" y2="18" stroke="white" stroke-width="2"/><line x1="9" y1="15" x2="15" y2="15" stroke="white" stroke-width="2"/></svg>`
