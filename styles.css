@@ -15,11 +15,14 @@
   --ink-soft:     #6E6A5E;
   --ink-faint:    #9C9788;
 
-  /* accent — named after real pigments */
-  --accent:       #0083C7; /* Zeruleanblau */
-  --accent-soft:  #DCF0FA;
+  /* accent — theme-specific UI hue, named after real pigments. Light = magnolia, dark = blue. */
+  --accent:       #A63F86; /* Chinacridonmagenta */
+  --accent-dark:  #7E2F65;
+  --accent-soft:  #F3D9E9;
+  --accent-on:    #FBF5F4;
+
+  /* warm — semantic warning/status color only (mismatches, out of stock), not UI chrome */
   --accent-warm:  #F0621D; /* Cadmiumorange */
-  --accent-warm-soft: #FBDFCB;
 
   --ok:           #2F9E52;
   --ok-soft:      #DEF3E4;
@@ -132,7 +135,7 @@ body {
   color: var(--ink);
   margin: 0 0 4px;
 }
-.app-title svg { color: var(--accent-warm); flex-shrink: 0; }
+.app-title svg { color: var(--accent); flex-shrink: 0; }
 .app-title-text {
   position: relative;
   display: inline-block;
@@ -145,7 +148,7 @@ body {
   right: -10px;
   top: 6px;
   bottom: -2px;
-  background: #F3D9E9; /* Chinacridonmagenta, sehr blass */
+  background: var(--accent-soft);
   border-radius: 4px 16px 6px 13px;
   transform: rotate(-1.3deg);
   z-index: -1;
@@ -175,7 +178,7 @@ body {
 .progress-fill {
   height: 100%;
   border-radius: 3px;
-  background: linear-gradient(90deg, var(--accent), var(--accent-warm));
+  background: var(--accent);
   transition: width 0.4s ease;
 }
 .progress-label {
@@ -210,15 +213,17 @@ body {
 }
 .toggle-btn--active {
   background: var(--accent);
-  color: var(--paper-raised);
+  color: var(--accent-on);
   border-color: var(--accent);
 }
+.toggle-btn--active:active { background: var(--accent-dark); }
 .toggle-btn--inactive {
-  background: var(--accent-warm-soft);
-  color: var(--accent-warm);
+  background: var(--accent-soft);
+  color: var(--accent);
   border-color: transparent;
 }
 .toggle-btn--inactive:hover { opacity: 0.8; }
+.toggle-btn:active { filter: brightness(0.9); }
 
 /* ── Auth bar ─────────────────────────────────────────────────────────────── */
 .auth-bar {
@@ -252,15 +257,16 @@ body {
 .auth-btn {
   font-size: 11px;
   font-weight: 600;
-  color: var(--accent-warm);
+  color: var(--accent);
   background: transparent;
-  border: 1px solid var(--accent-warm);
+  border: 1px solid var(--accent);
   padding: 5px 11px;
   border-radius: 6px;
   cursor: pointer;
   font-family: var(--font-body);
 }
 .auth-btn:hover { opacity: 0.75; }
+.auth-btn:active { filter: brightness(0.9); }
 .token-input {
   font-size: 12px;
   font-weight: 500;
@@ -280,7 +286,7 @@ body {
 .connect-btn {
   font-size: 12px;
   font-weight: 600;
-  color: var(--paper-raised);
+  color: var(--accent-on);
   background: var(--accent);
   border: none;
   padding: 6px 14px;
@@ -289,6 +295,7 @@ body {
   font-family: var(--font-body);
 }
 .connect-btn:hover { opacity: 0.88; }
+.connect-btn:active { background: var(--accent-dark); }
 
 /* ── Groups ───────────────────────────────────────────────────────────────── */
 .color-group {
@@ -610,8 +617,11 @@ a.tile-code:hover { text-decoration: underline; }
   --ink-soft:     #93989F;
   --ink-faint:    #5F6975;
 
-  --accent:       #4FC1F0;
+  --accent:       #4FC1F0; /* Himmelblau */
+  --accent-dark:  #2E93C4;
   --accent-soft:  #163241;
+  --accent-on:    #10151B;
+
   --accent-warm:  #FF8A4C;
 
   --ok:           #6FCB89;
@@ -620,13 +630,6 @@ a.tile-code:hover { text-decoration: underline; }
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
   --shadow-md: 0 8px 22px rgba(0, 0, 0, 0.55);
 }
-
-:root[data-theme="dark"] .toggle-btn--active { color: #10151b; }
-:root[data-theme="dark"] .connect-btn { color: #10151b; }
-:root[data-theme="dark"] .app-title-text::before { background: rgba(255, 138, 76, 0.22); }
-:root[data-theme="dark"] .nav-link--active .nav-link-text::before { background: rgba(79, 193, 240, 0.2); }
-:root[data-theme="dark"] .toggle-btn--inactive,
-:root[data-theme="dark"] .theme-toggle { background: rgba(255, 138, 76, 0.16); }
 
 :root[data-theme="dark"] .tile-ohuhu option,
 :root[data-theme="dark"] .tile-ohuhu optgroup {
@@ -637,8 +640,8 @@ a.tile-code:hover { text-decoration: underline; }
 /* ── Theme toggle ──────────────────────────────────────────────────────────── */
 .theme-toggle {
   margin-left: auto;
-  background: var(--accent-warm-soft);
-  color: var(--accent-warm);
+  background: var(--accent-soft);
+  color: var(--accent);
   border: 1px solid transparent;
   border-radius: 7px;
   width: 32px;
@@ -651,6 +654,7 @@ a.tile-code:hover { text-decoration: underline; }
   flex-shrink: 0;
 }
 .theme-toggle:hover { opacity: 0.8; }
+.theme-toggle:active { filter: brightness(0.9); }
 
 /* ── Table view ───────────────────────────────────────────────────────────── */
 .table-scroll {
