@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;1,500;1,600;1,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css">
-  <script>(function(){const t=localStorage.getItem('colortracker_theme')||( window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);})()</script>
+  <script src="./js/theme-init.js"></script>
   <script src="./data/polychromos.js"></script>
   <script src="./data/ohuhu.js"></script>
 </head>
@@ -42,27 +42,10 @@
       <button class="theme-toggle" id="themeToggle" aria-label="Dark mode umschalten"></button>
     </div>
   </nav>
-  <script>
-    (function(){
-      const dd = document.getElementById('navDropdown');
-      document.addEventListener('click', (e) => {
-        if (dd.open && !dd.contains(e.target)) dd.open = false;
-      });
-      dd.addEventListener('click', (e) => {
-        if (e.target.closest('a')) dd.open = false;
-      });
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') dd.open = false;
-      });
-      document.addEventListener('click', (e) => {
-        document.querySelectorAll('.view-select[open]').forEach(vs => {
-          if (!vs.contains(e.target)) vs.open = false;
-        });
-      });
-    })();
-  </script>
+  <script src="./js/nav-dropdown.js"></script>
   <div id="app" class="app-inner"></div>
 
   <script src="./js/ohuhu.js"></script>
+  <script src="./js/theme-toggle.js"></script>
 </body>
 </html>

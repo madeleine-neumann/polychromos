@@ -1,0 +1,457 @@
+// ── Helpers ───────────────────────────────────────────────────────────────
+const ICON_PENCIL = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .622.622l4.353-1.321a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>`;
+const ICON_SYNCING = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>`;
+const ICON_CLOUD = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h.79a4.5 4.5 0 1 1 0 9z"/></svg>`;
+const ICON_WARN = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+const ICON_CHEVRON = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
+
+function darken(hex, amount = 0.72) {
+  const r = parseInt(hex.slice(1,3), 16);
+  const g = parseInt(hex.slice(3,5), 16);
+  const b = parseInt(hex.slice(5,7), 16);
+  return '#' + [r,g,b].map(c => Math.round(c * amount).toString(16).padStart(2,'0')).join('');
+}
+
+const PENCILS_BY_NR = Object.fromEntries(PENCILS.map(p => [p.nr, p]));
+
+// ── Farbabstand (Lab/CIE76) für Ohuhu-Zuordnungs-Check ──────────────────────
+function hexToRgb(hex) {
+  return [1,3,5].map(i => parseInt(hex.slice(i,i+2), 16));
+}
+function rgbToLab([r,g,b]) {
+  const srgb = [r,g,b].map(c => {
+    c /= 255;
+    return c <= 0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4);
+  });
+  const [rl,gl,bl] = srgb;
+  const x = (rl*0.4124564 + gl*0.3575761 + bl*0.1804375) / 0.95047;
+  const y = (rl*0.2126729 + gl*0.7151522 + bl*0.0721750) / 1.0;
+  const z = (rl*0.0193339 + gl*0.1191920 + bl*0.9503041) / 1.08883;
+  const f = t => t > 0.008856 ? Math.cbrt(t) : (7.787*t + 16/116);
+  const [fx,fy,fz] = [x,y,z].map(f);
+  return [116*fy - 16, 500*(fx-fy), 200*(fy-fz)];
+}
+function labDist(hexA, hexB) {
+  const [L1,a1,b1] = rgbToLab(hexToRgb(hexA));
+  const [L2,a2,b2] = rgbToLab(hexToRgb(hexB));
+  return Math.sqrt((L1-L2)**2 + (a1-a2)**2 + (b1-b2)**2);
+}
+// Für jeden Stift die nähste Ohuhu-Farbe vorab berechnen (Vergleich gegen die mittlere Auftragsstufe)
+const NEAREST_OHUHU_BY_NR = Object.fromEntries(PENCILS.map(p => {
+  let best = null, bestDist = Infinity;
+  for (const m of MARKERS) {
+    const d = labDist(p.color, m.colors[2]);
+    if (d < bestDist) { bestDist = d; best = m; }
+  }
+  return [p.nr, { code: best.code, name: best.name, dist: bestDist }];
+}));
+// Schwelle, ab der eine manuelle Zuordnung als farblich fragwürdig markiert wird (CIE76 ΔE)
+const OHUHU_MATCH_WARN_THRESHOLD = 20;
+
+// ── Ohuhu Dropdown ────────────────────────────────────────────────────────
+const MARKERS_BY_CODE = Object.fromEntries(MARKERS.map(m => [m.code, m]));
+
+const OHUHU_OPTS = '<option value="">— Ohuhu —</option>' +
+  OHUHU_GROUPS.map(g => {
+    const opts = g.codes
+      .filter(c => MARKERS_BY_CODE[c])
+      .map(c => `<option value="${c}">${c} · ${MARKERS_BY_CODE[c].name}</option>`)
+      .join('');
+    return opts ? `<optgroup label="${g.label}">${opts}</optgroup>` : '';
+  }).join('');
+
+function ohuhuSelect(nr) {
+  const val = getOhuhu(nr);
+  const opts = val
+    ? OHUHU_OPTS.replace(`value="${val}"`, `value="${val}" selected`)
+    : OHUHU_OPTS;
+  return `<select class="tile-ohuhu" onclick="event.stopPropagation()" onchange="setOhuhu(${nr},this.value)">${opts}</select>`;
+}
+
+// Prüft die manuelle Zuordnung gegen die reale Ohuhu-Farbe (ΔE = CIE76-Farbabstand, 0 = identisch, >20 = deutlich andere Farbe)
+function ohuhuMatchInfo(nr) {
+  const val = getOhuhu(nr);
+  const suggestion = NEAREST_OHUHU_BY_NR[nr];
+  if (val) {
+    const marker = MARKERS_BY_CODE[val];
+    if (!marker) return null;
+    const dist = labDist(PENCILS_BY_NR[nr].color, marker.colors[2]);
+    if (dist >= OHUHU_MATCH_WARN_THRESHOLD) {
+      return { type: 'warn', text: `ΔE ${dist.toFixed(0)}`,
+        title: `Farbabstand groß (ΔE ${dist.toFixed(0)}) — näher wäre ${suggestion.code} · ${suggestion.name}` };
+    }
+    return null;
+  }
+  if (suggestion) {
+    return { type: 'suggest', text: `≈ ${suggestion.code}`,
+      title: `Nächstgelegene Ohuhu-Farbe (nicht bestätigt): ${suggestion.code} · ${suggestion.name}` };
+  }
+  return null;
+}
+
+function ohuhuMatchBadge(nr) {
+  const info = ohuhuMatchInfo(nr);
+  if (!info) return '';
+  return `<div class="tile-ohuhu-warn${info.type === 'suggest' ? ' tile-ohuhu-warn--suggest' : ''}" title="${info.title}">${info.text}</div>`;
+}
+
+function ohuhuMatchInline(nr) {
+  const info = ohuhuMatchInfo(nr);
+  if (!info) return '';
+  return `<span class="ohuhu-match-inline${info.type === 'suggest' ? ' ohuhu-match-inline--suggest' : ''}" title="${info.title}">${info.text}</span>`;
+}
+
+// ── State ─────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'polychromos_data';
+
+function loadState() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw === null) {
+    // Erster Start: jeden Stift mit der farblich nächstgelegenen Ohuhu-Farbe vorbelegen
+    const seeded = {};
+    PENCILS.forEach(p => {
+      const nearest = NEAREST_OHUHU_BY_NR[p.nr];
+      if (nearest) seeded[p.nr] = { ohuhu: nearest.code, ohuhuAuto: true };
+    });
+    return seeded;
+  }
+  try { return JSON.parse(raw) || {}; }
+  catch { return {}; }
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+let state = loadState();
+let currentView = localStorage.getItem('polychromos_view') || 'numeric';
+
+function isOwned(nr)    { return !!(state[nr]?.owned); }
+function isWishlist(nr) { return !!(state[nr]?.wishlist); }
+function getOhuhu(nr)   { return state[nr]?.ohuhu || ''; }
+function ownedCount()   { return PENCILS.filter(p => isOwned(p.nr)).length; }
+function wishlistCount(){ return PENCILS.filter(p => isWishlist(p.nr)).length; }
+
+function toggleOwned(nr) {
+  state[nr] = state[nr] || {};
+  state[nr].owned = !state[nr].owned;
+  saveState(); broadcastUpdate(); scheduleGistSave();
+  renderAll();
+}
+
+function toggleWishlist(nr) {
+  state[nr] = state[nr] || {};
+  state[nr].wishlist = !state[nr].wishlist;
+  saveState(); broadcastUpdate(); scheduleGistSave(); renderAll();
+}
+
+function setOhuhu(nr, value) {
+  state[nr] = state[nr] || {};
+  state[nr].ohuhu = value.trim();
+  state[nr].ohuhuAuto = false; // manuell bestätigt/geändert
+  saveState(); broadcastUpdate(); scheduleGistSave();
+}
+
+function setView(view) {
+  currentView = view;
+  localStorage.setItem('polychromos_view', view);
+  renderAll();
+}
+
+// ── Shared Gist Sync ─────────────────────────────────────────────────────
+const TOKEN_KEY      = 'polychromos_gh_token';
+const SHARED_KEY     = 'shared_gist_id';
+const POLY_FILE      = 'polychromos_data.json';
+const OHUHU_FILE     = 'ohuhu_data.json';
+const GH_API         = 'https://api.github.com';
+
+let githubToken = localStorage.getItem(TOKEN_KEY) || '';
+let gistId      = localStorage.getItem(SHARED_KEY) || '';
+let syncStatus  = 'idle';
+let syncTimer   = null;
+
+function ghHeaders() {
+  return { Authorization: `Bearer ${githubToken}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' };
+}
+
+async function connectGist() {
+  const input = document.getElementById('token-input');
+  const token = input?.value.trim();
+  if (!token) return;
+  githubToken = token;
+  localStorage.setItem(TOKEN_KEY, token);
+  gistId = ''; localStorage.removeItem(SHARED_KEY);
+  await loadFromGist();
+  renderAll();
+}
+
+function disconnectGist() {
+  githubToken = ''; localStorage.removeItem(TOKEN_KEY);
+  gistId = '';     localStorage.removeItem(SHARED_KEY);
+  syncStatus = 'idle'; renderAll();
+}
+
+async function ensureGistId() {
+  if (gistId) return;
+  const r = await fetch(`${GH_API}/gists?per_page=100`, { headers: ghHeaders() });
+  if (!r.ok) throw new Error('Token ungültig');
+  const gists = await r.json();
+  // Prefer shared gist (has both files), then fall back to single-file gists
+  const found = gists.find(g => g.files[POLY_FILE] && g.files[OHUHU_FILE])
+    || gists.find(g => g.files[POLY_FILE])
+    || gists.find(g => g.files[OHUHU_FILE]);
+  if (found) {
+    gistId = found.id;
+  } else {
+    // Create shared gist with both datasets
+    const ohuhuLocal = localStorage.getItem('ohuhu_data') || '{}';
+    const cr = await fetch(`${GH_API}/gists`, {
+      method: 'POST', headers: ghHeaders(),
+      body: JSON.stringify({
+        description: 'Polychromos & Ohuhu Sammlung',
+        public: false,
+        files: {
+          [POLY_FILE]:  { content: JSON.stringify(state) },
+          [OHUHU_FILE]: { content: ohuhuLocal },
+        }
+      })
+    });
+    if (!cr.ok) throw new Error('Gist erstellen fehlgeschlagen');
+    gistId = (await cr.json()).id;
+  }
+  localStorage.setItem(SHARED_KEY, gistId);
+}
+
+async function loadFromGist() {
+  if (!githubToken) return;
+  syncStatus = 'syncing'; updateSyncUI();
+  try {
+    await ensureGistId();
+    const r = await fetch(`${GH_API}/gists/${gistId}`, { headers: ghHeaders() });
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    const content = data.files[POLY_FILE]?.content;
+    if (content) { state = JSON.parse(content); saveState(); }
+    syncStatus = 'synced';
+  } catch(e) {
+    syncStatus = 'error';
+    gistId = ''; localStorage.removeItem(SHARED_KEY);
+  }
+  updateSyncUI();
+}
+
+async function saveToGist() {
+  if (!githubToken) return;
+  syncStatus = 'syncing'; updateSyncUI();
+  try {
+    await ensureGistId();
+    const r = await fetch(`${GH_API}/gists/${gistId}`, {
+      method: 'PATCH', headers: ghHeaders(),
+      body: JSON.stringify({ files: { [POLY_FILE]: { content: JSON.stringify(state) } } })
+    });
+    if (!r.ok) throw new Error();
+    syncStatus = 'synced';
+  } catch(e) { syncStatus = 'error'; }
+  updateSyncUI();
+}
+
+// ── Cross-Tab Sync ────────────────────────────────────────────────────────
+const syncChannel = new BroadcastChannel('polychromos-sync');
+
+function broadcastUpdate() {
+  try { syncChannel.postMessage({ type: 'updated', source: 'polychromos' }); } catch {}
+}
+
+syncChannel.onmessage = ({ data }) => {
+  if (data.type !== 'updated') return;
+  state = loadState();
+  renderAll();
+};
+
+function scheduleGistSave() {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(saveToGist, 1500);
+}
+
+function syncStatusMarkup(status) {
+  const map = {
+    idle: '',
+    syncing: `${ICON_SYNCING} Speichert…`,
+    synced: `${ICON_CLOUD} Gespeichert`,
+    error: `${ICON_WARN} Fehler`,
+  };
+  return map[status] || '';
+}
+
+function updateSyncUI() {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  el.innerHTML = syncStatusMarkup(syncStatus);
+}
+
+if (githubToken) loadFromGist().then(() => renderAll());
+
+// ── Render: Header ────────────────────────────────────────────────────────
+function renderAuthBar() {
+  if (githubToken) {
+    return `
+      <div class="auth-bar">
+        <span id="sync-status" class="sync-label">${syncStatusMarkup(syncStatus)}</span>
+        <span class="connected-badge">${ICON_CHECK} GitHub</span>
+        <button class="auth-btn" onclick="disconnectGist()">Trennen</button>
+      </div>`;
+  }
+  return `
+    <div class="auth-bar">
+      <input id="token-input" class="token-input" type="password" placeholder="GitHub Token"
+        onkeydown="if(event.key==='Enter')connectGist()">
+      <button class="connect-btn" onclick="connectGist()">Verbinden</button>
+    </div>`;
+}
+
+function renderHeader() {
+  const count = ownedCount();
+  const pct = Math.round(count / PENCILS.length * 100);
+  const wishlistLabel = `Einkaufsliste${wishlistCount() ? ` (${wishlistCount()})` : ''}`;
+  const viewLabels = { numeric: 'Nummerisch', groups: 'Farbgruppen', wishlist: wishlistLabel, table: 'Tabelle' };
+  return `
+    <div class="app-header">
+      <div class="header-top">
+        <div>
+          <h1 class="app-title">${ICON_PENCIL}<span class="app-title-text">Polychromos</span></h1>
+          <p class="app-subtitle">Meine Stiftsammlung</p>
+        </div>
+        ${renderAuthBar()}
+      </div>
+      <div class="progress-row">
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <span class="progress-label">${count} / ${PENCILS.length} · ${pct}%</span>
+      </div>
+      <details class="view-select">
+        <summary class="view-select-current">
+          <span>${viewLabels[currentView]}</span>
+          ${ICON_CHEVRON}
+        </summary>
+        <div class="view-select-list">
+          <button class="${currentView === 'numeric'  ? 'active' : ''}" onclick="setView('numeric')">Nummerisch</button>
+          <button class="${currentView === 'groups'   ? 'active' : ''}" onclick="setView('groups')">Farbgruppen</button>
+          <button class="${currentView === 'wishlist' ? 'active' : ''}" onclick="setView('wishlist')">${wishlistLabel}</button>
+          <button class="${currentView === 'table'    ? 'active' : ''}" onclick="setView('table')">Tabelle</button>
+        </div>
+      </details>
+    </div>`;
+}
+
+// ── Render: Tile ──────────────────────────────────────────────────────────
+const ICON_CART = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>`;
+
+function renderTile(p) {
+  const owned    = isOwned(p.nr);
+  const wishlist = isWishlist(p.nr);
+
+  const cartBadge = `<div class="tile-badge tile-badge--cart${wishlist ? ' tile-badge--cart-active' : ''}" onclick="event.stopPropagation();toggleWishlist(${p.nr})" data-tooltip="${wishlist ? 'Auf der Einkaufsliste' : 'Zur Einkaufsliste hinzufügen'}">${ICON_CART}</div>`;
+  return `<div
+    class="tile${owned ? '' : ' tile--unowned'}"
+    onclick="toggleOwned(${p.nr})"
+    title="${p.name} · Nr. ${p.nr} · ${p.lf}${p.inStock === false ? ' · vergriffen' : ''}"
+    style="background:linear-gradient(160deg,${p.color},${darken(p.color)})">
+    ${p.shopUrl
+      ? `<a class="tile-code" href="${p.shopUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" data-tooltip="Im Kunstpark-Shop ansehen">${p.nr}</a>`
+      : `<div class="tile-code">${p.nr}</div>`}
+    <div class="tile-name">${p.name}</div>
+    ${p.inStock === false ? `<div class="tile-refill-badge" style="color:var(--accent-warm)" data-tooltip="Aktuell vergriffen im Shop"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg></div>` : ''}
+    ${cartBadge}
+    ${ohuhuMatchBadge(p.nr)}
+    ${ohuhuSelect(p.nr)}
+  </div>`;
+}
+
+// ── Render: Views ─────────────────────────────────────────────────────────
+
+function groupGradient(nrs, byNr) {
+  const colors = nrs.map(nr => byNr[nr]?.color).filter(Boolean);
+  const n = 10;
+  const samples = colors.length <= n
+    ? colors
+    : Array.from({length: n}, (_, i) => colors[Math.floor(i * colors.length / n)]);
+  return `linear-gradient(90deg, ${samples.join(', ')})`;
+}
+
+function renderNumeric() {
+  return `<div class="tile-grid">${PENCILS.map(p => renderTile(p)).join('')}</div>`;
+}
+
+function renderGroups() {
+  const byNr = Object.fromEntries(PENCILS.map(p => [p.nr, p]));
+  return POLYCHROMOS_GROUPS.map(g => `
+    <div class="color-group">
+      <div class="group-gradient" style="background:${groupGradient(g.nrs, byNr)}"></div>
+      <h2 class="group-heading">${g.label}</h2>
+      <div class="tile-grid">${g.nrs.map(nr => byNr[nr] ? renderTile(byNr[nr]) : '').join('')}</div>
+    </div>`).join('');
+}
+
+function renderShoppingList() {
+  const items = PENCILS.filter(p => isWishlist(p.nr));
+  if (!items.length) return `<p class="shopping-empty">Keine Stifte auf der Einkaufsliste.</p>`;
+  return `<div class="shopping-list">${items.map(p => `
+    <div class="shopping-item" onclick="toggleWishlist(${p.nr})" title="Von Liste entfernen">
+      <div class="shopping-swatch" style="background:${p.color}"></div>
+      <span class="shopping-code">Nr. ${p.nr}</span>
+      <span class="shopping-name">${p.name}</span>
+      ${p.inStock === false
+        ? `<span class="ohuhu-match-inline" style="margin-left:auto" title="Aktuell vergriffen im Shop">vergriffen</span>`
+        : (p.shopUrl ? `<span class="ohuhu-match-inline ohuhu-match-inline--suggest" style="margin-left:auto" title="Verfügbar im Shop">verfügbar</span>` : '')}
+    </div>`).join('')}</div>`;
+}
+
+const ICON_CHECK = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+function lfBar(lf) {
+  const n = (lf.match(/★/g) || []).length;
+  return `<span class="lf-bar" data-tooltip="Lichtechtheit ${n}/3">${[1,2,3].map(i => `<span${i <= n ? ' class="lf-bar--filled"' : ''}></span>`).join('')}</span>`;
+}
+
+function renderTable() {
+  return `<div class="table-scroll"><table class="data-table">
+    <thead><tr>
+      <th></th>
+      <th>Nr.</th>
+      <th>Name</th>
+      <th>Lichtfestigkeit</th>
+      <th data-tooltip="Besessen">` + ICON_CHECK + `</th>
+      <th data-tooltip="Einkaufsliste">` + ICON_CART + `</th>
+      <th>Ohuhu</th>
+    </tr></thead>
+    <tbody>${PENCILS.map(p => {
+      const owned    = isOwned(p.nr);
+      const wishlist = isWishlist(p.nr);
+      const ohuhu    = getOhuhu(p.nr);
+      return `<tr>
+        <td><div class="table-swatch" style="background:${p.color}"></div></td>
+        <td>${p.shopUrl ? `<a href="${p.shopUrl}" target="_blank" rel="noopener" style="color:inherit" data-tooltip="Im Kunstpark-Shop ansehen">${p.nr}</a>` : p.nr}</td>
+        <td>${p.name}${p.inStock === false ? ' <span class="ohuhu-match-inline" title="Aktuell vergriffen im Shop">vergriffen</span>' : ''}</td>
+        <td class="table-lf">${lfBar(p.lf)}</td>
+        <td><button class="table-icon-btn${owned ? ' table-icon-btn--active' : ''}" onclick="toggleOwned(${p.nr})" data-tooltip="${owned ? 'Besessen' : 'Nicht besessen'}">${ICON_CHECK}</button></td>
+        <td><button class="table-icon-btn${wishlist ? ' table-icon-btn--green' : ''}" onclick="toggleWishlist(${p.nr})" data-tooltip="${wishlist ? 'Auf der Einkaufsliste' : 'Zur Einkaufsliste hinzufügen'}">${ICON_CART}</button></td>
+        <td style="color:var(--ink-soft);font-size:12px;font-family:var(--font-mono)">${ohuhu || '—'} ${ohuhuMatchInline(p.nr)}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+// ── Render: All ───────────────────────────────────────────────────────────
+function renderAll() {
+  const app = document.getElementById('app');
+  app.innerHTML = renderHeader() +
+    (currentView === 'groups'   ? renderGroups() :
+     currentView === 'wishlist' ? renderShoppingList() :
+     currentView === 'table'    ? renderTable() :
+     renderNumeric());
+}
+
+renderAll();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW:', e));
+}
