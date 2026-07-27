@@ -32,19 +32,18 @@
   <div id="app" class="app-inner"></div>
 
   <script>
-    // ── Helpers ───────────────────────────────────────────────────────────────
-    function darken(hex, amount = 0.72) {
-      const r = parseInt(hex.slice(1,3), 16);
-      const g = parseInt(hex.slice(3,5), 16);
-      const b = parseInt(hex.slice(5,7), 16);
-      return '#' + [r,g,b].map(c => Math.round(c * amount).toString(16).padStart(2,'0')).join('');
-    }
-
     // ── State ─────────────────────────────────────────────────────────────────
     const STORAGE_KEY = 'ohuhu_data';
 
     function loadState() {
-      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw === null) {
+        // Erster Start: Besitzstand aus dem Swatch-Chart-Import vorbefüllen
+        const seeded = {};
+        MARKERS.forEach(m => { if (m.owned) seeded[m.code] = { owned: true }; });
+        return seeded;
+      }
+      try { return JSON.parse(raw) || {}; }
       catch { return {}; }
     }
     function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
@@ -313,16 +312,21 @@
         ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.8-4-4-6.5c-.2 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/><line x1="12" y1="12" x2="12" y2="18" stroke="white" stroke-width="2"/><line x1="9" y1="15" x2="15" y2="15" stroke="white" stroke-width="2"/></svg>`
         : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.8-4-4-6.5c-.2 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`;
       const refillCartBadge = `<div class="tile-cart-badge tile-cart-badge--br${isRefillCart(m.code) ? ' tile-cart-badge--active' : ''}" onclick="event.stopPropagation();toggleRefillCart('${m.code}')" data-tooltip="${isRefillCart(m.code) ? 'Nachfüller von Liste entfernen' : 'Nachfüller auf Einkaufsliste'}">${refillCartIcon}</div>`;
-      const polyNr = polyReverseMap[m.code];
+      const manualPolyNr = polyReverseMap[m.code];
+      const polyNr = manualPolyNr || m.nearestPoly;
       const pencil = polyNr ? PENCILS_BY_NR[polyNr] : null;
+      const isAutoMatch = pencil && !manualPolyNr;
       const polyLink = pencil
-        ? `<div class="tile-poly-link" title="Polychromos ${pencil.nr} · ${pencil.name}">P·${pencil.nr}</div>`
+        ? `<div class="tile-poly-link${isAutoMatch ? ' tile-poly-link--auto' : ''}" title="${isAutoMatch ? 'Nächstgelegene' : ''} Polychromos ${pencil.nr} · ${pencil.name}">${isAutoMatch ? '≈' : ''}P·${pencil.nr}</div>`
+        : '';
+      const titlePolyNote = pencil
+        ? ` · ${isAutoMatch ? '≈ nächste' : '≡'} Polychromos ${pencil.nr} ${pencil.name}`
         : '';
       return `<div
         class="tile${owned ? '' : ' tile--unowned'}"
         onclick="toggleOwned('${m.code}')"
-        title="${m.name} · ${m.code}${pencil ? ' · ≡ Polychromos ' + pencil.nr + ' ' + pencil.name : ''}"
-        style="background:linear-gradient(160deg,${m.color},${darken(m.color)})">
+        title="${m.name} · ${m.code}${titlePolyNote}"
+        style="background:linear-gradient(160deg,${m.colors.join(',')})">
         <div class="${codeClass(m.code)}">${m.code}</div>
         <div class="tile-name">${m.name}</div>
         ${badge}
@@ -334,7 +338,7 @@
     }
 
     function groupGradient(codes, byCode) {
-      const colors = codes.map(c => byCode[c]?.color).filter(Boolean);
+      const colors = codes.map(c => byCode[c]?.colors[2]).filter(Boolean);
       const n = 10;
       const samples = colors.length <= n
         ? colors
@@ -363,7 +367,7 @@
         return `<p class="shopping-empty">Keine Einträge auf der Einkaufsliste.<br>Tippe auf einen Warenkorb auf einer Kachel um sie hinzuzufügen.</p>`;
       const renderItems = (items, toggle) => items.map(m => `
         <div class="shopping-item" onclick="${toggle}('${m.code}')" title="Von Liste entfernen">
-          <div class="shopping-swatch" style="background:${m.color}"></div>
+          <div class="shopping-swatch" style="background:${m.colors[2]}"></div>
           <span class="shopping-code">${m.code}</span>
           <span class="shopping-name">${m.name}</span>
         </div>`).join('');
@@ -391,7 +395,7 @@
           const wishlist   = isWishlist(m.code);
           const refillCart = isRefillCart(m.code);
           return `<tr>
-            <td><div class="table-swatch" style="background:${m.color}"></div></td>
+            <td><div class="table-swatch" style="background:linear-gradient(90deg,${m.colors.join(',')})"></div></td>
             <td>${m.code}</td>
             <td>${m.name}</td>
             <td><button class="table-icon-btn${owned ? ' table-icon-btn--active' : ''}" onclick="toggleOwned('${m.code}')" data-tooltip="${owned ? 'Besessen' : 'Nicht besessen'}">${ICON_CHECK}</button></td>
