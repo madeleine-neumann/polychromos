@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Matched Pencils — Polychromos × Ohuhu</title>
+
+  <link rel="icon" type="image/x-icon" href="./favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png">
+
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <script>(function(){const t=localStorage.getItem('colortracker_theme')||( window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);})()</script>
+  <script src="./data/polychromos.js"></script>
+  <script src="./data/ohuhu.js"></script>
+</head>
+<body>
+  <nav class="app-nav">
+    <div class="nav-inner">
+      <a href="./index.html" class="nav-link nav-link--inactive">🎨 Polychromos</a>
+      <a href="./ohuhu.html" class="nav-link nav-link--inactive">🖊 Ohuhu</a>
+      <a href="./matched-pencils.html" class="nav-link nav-link--active">🔗 Matched Pencils</a>
+      <button class="theme-toggle" id="themeToggle" aria-label="Dark mode umschalten"></button>
+    </div>
+  </nav>
+  <div id="app" class="app-inner"></div>
+
+  <script>
+    // ── Farbabstand (Lab/CIE76) — identisch zu index.html ───────────────────────
+    function hexToRgb(hex) { return [1,3,5].map(i => parseInt(hex.slice(i,i+2), 16)); }
+    function rgbToLab([r,g,b]) {
+      const srgb = [r,g,b].map(c => { c /= 255; return c <= 0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); });
+      const [rl,gl,bl] = srgb;
+      const x = (rl*0.4124564 + gl*0.3575761 + bl*0.1804375) / 0.95047;
+      const y = (rl*0.2126729 + gl*0.7151522 + bl*0.0721750) / 1.0;
+      const z = (rl*0.0193339 + gl*0.1191920 + bl*0.9503041) / 1.08883;
+      const f = t => t > 0.008856 ? Math.cbrt(t) : (7.787*t + 16/116);
+      const [fx,fy,fz] = [x,y,z].map(f);
+      return [116*fy - 16, 500*(fx-fy), 200*(fy-fz)];
+    }
+    function labDist(hexA, hexB) {
+      const [L1,a1,b1] = rgbToLab(hexToRgb(hexA));
+      const [L2,a2,b2] = rgbToLab(hexToRgb(hexB));
+      return Math.sqrt((L1-L2)**2 + (a1-a2)**2 + (b1-b2)**2);
+    }
+
+    const MARKERS_BY_CODE = Object.fromEntries(MARKERS.map(m => [m.code, m]));
+    const NEAREST_OHUHU_BY_NR = Object.fromEntries(PENCILS.map(p => {
+      let best = null, bestDist = Infinity;
+      for (const m of MARKERS) {
+        const d = labDist(p.color, m.colors[2]);
+        if (d < bestDist) { bestDist = d; best = m; }
+      }
+      return [p.nr, { code: best.code, name: best.name, dist: bestDist }];
+    }));
+
+    // ── State (nur lesend) ───────────────────────────────────────────────────
+    function readJSON(key) {
+      try { return JSON.parse(localStorage.getItem(key)) || {}; }
+      catch { return {}; }
+    }
+    let polyState  = readJSON('polychromos_data');
+    let ohuhuState = readJSON('ohuhu_data');
+
+    function isPencilOwned(nr)  { return !!(polyState[nr]?.owned); }
+    function isMarkerOwned(code){ return !!(ohuhuState[code]?.owned); }
+    function matchedCode(nr) {
+      return polyState[nr]?.ohuhu || NEAREST_OHUHU_BY_NR[nr]?.code || '';
+    }
+    function isAutoMatch(nr) { return polyState[nr]?.ohuhu ? !!polyState[nr].ohuhuAuto : true; }
+
+    function refresh() {
+      polyState  = readJSON('polychromos_data');
+      ohuhuState = readJSON('ohuhu_data');
+      renderAll();
+    }
+
+    // ── Render ────────────────────────────────────────────────────────────────
+    const ICON_CHECK = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+    const ICON_MISSING = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+
+    function renderHeader(rows) {
+      const ownedPencils = rows.filter(r => r.pencilOwned);
+      const missing = ownedPencils.filter(r => !r.markerOwned);
+      return `
+        <div class="app-header">
+          <div class="header-top">
+            <div>
+              <h1 class="app-title">🔗 Matched Pencils</h1>
+              <p class="app-subtitle">Polychromos-Besitz × farblich nächstgelegener Ohuhu-Marker</p>
+            </div>
+            <button class="toggle-btn" onclick="refresh()" data-tooltip="Besitzstand neu aus dem Speicher laden">🔄 Aktualisieren</button>
+          </div>
+          <div class="progress-row">
+            <div class="progress-bar"><div class="progress-fill" style="width:${ownedPencils.length ? Math.round((ownedPencils.length-missing.length)/ownedPencils.length*100) : 0}%"></div></div>
+            <span class="progress-label">${ownedPencils.length - missing.length} / ${ownedPencils.length} Zwillinge vorhanden</span>
+            <span class="progress-label refill-label">${missing.length} fehlen noch</span>
+          </div>
+          <div class="view-toggle">
+            <button id="btn-all"     class="toggle-btn" onclick="setFilter('all')">Alle Stifte</button>
+            <button id="btn-owned"   class="toggle-btn" onclick="setFilter('owned')">Nur besessene Stifte</button>
+            <button id="btn-missing" class="toggle-btn" onclick="setFilter('missing')">Nur fehlende Zwillinge</button>
+          </div>
+        </div>`;
+    }
+
+    let filter = 'missing';
+    function setFilter(f) { filter = f; renderAll(); }
+
+    function renderTable(rows) {
+      const filtered = rows.filter(r => {
+        if (filter === 'owned')   return r.pencilOwned;
+        if (filter === 'missing') return r.pencilOwned && !r.markerOwned;
+        return true;
+      });
+      if (!filtered.length) {
+        return `<p class="shopping-empty">Keine Einträge für diesen Filter.</p>`;
+      }
+      return `<div class="table-scroll"><table class="data-table">
+        <thead><tr>
+          <th></th><th>Nr.</th><th>Name</th>
+          <th data-tooltip="Stift besessen">` + ICON_CHECK + `</th>
+          <th></th><th>Ohuhu-Zwilling</th>
+          <th data-tooltip="Zwilling besessen">` + ICON_CHECK + `</th>
+          <th data-tooltip="Farbabstand (CIE76 ΔE) zwischen Stift und Zwilling: 0 = identisch, bis ~10 = kaum sichtbar unterschiedlich, ab ~20 = deutlich andere Farbe">ΔE ⓘ</th>
+        </tr></thead>
+        <tbody>${filtered.map(r => `
+          <tr style="${r.pencilOwned && !r.markerOwned ? 'background:rgba(234,88,12,0.08)' : ''}">
+            <td><div class="table-swatch" style="background:${r.pencil.color}"></div></td>
+            <td>${r.pencil.nr}</td>
+            <td>${r.pencil.name}</td>
+            <td><span class="table-icon-btn${r.pencilOwned ? ' table-icon-btn--active' : ''}">${r.pencilOwned ? ICON_CHECK : ICON_MISSING}</span></td>
+            <td>${r.marker ? `<div class="table-swatch" style="background:${r.marker.colors[2]}"></div>` : ''}</td>
+            <td>${r.marker ? `${r.marker.code} · ${r.marker.name}${r.auto ? ' <span class="ohuhu-match-inline ohuhu-match-inline--suggest" title="Automatischer Vorschlag, nicht manuell bestätigt">≈ auto</span>' : ''}` : '—'}</td>
+            <td><span class="table-icon-btn${r.markerOwned ? ' table-icon-btn--green' : ''}">${r.markerOwned ? ICON_CHECK : ICON_MISSING}</span></td>
+            <td>${r.dist != null ? r.dist.toFixed(0) : '—'}</td>
+          </tr>`).join('')}</tbody>
+      </table></div>`;
+    }
+
+    function buildRows() {
+      return PENCILS.map(p => {
+        const code = matchedCode(p.nr);
+        const marker = code ? MARKERS_BY_CODE[code] : null;
+        return {
+          pencil: p,
+          pencilOwned: isPencilOwned(p.nr),
+          marker,
+          markerOwned: marker ? isMarkerOwned(marker.code) : false,
+          auto: isAutoMatch(p.nr),
+          dist: marker ? labDist(p.color, marker.colors[2]) : null,
+        };
+      });
+    }
+
+    function renderAll() {
+      const rows = buildRows();
+      const app = document.getElementById('app');
+      app.innerHTML = renderHeader(rows) + renderTable(rows);
+      ['all','owned','missing'].forEach(f => {
+        document.getElementById(`btn-${f}`).className = `toggle-btn toggle-btn--${filter === f ? 'active' : 'inactive'}`;
+      });
+    }
+
+    renderAll();
+
+    // ── Cross-Tab Sync ────────────────────────────────────────────────────────
+    try {
+      const syncChannel = new BroadcastChannel('polychromos-sync');
+      syncChannel.onmessage = ({ data }) => { if (data?.type === 'updated') refresh(); };
+    } catch {}
+
+    // ── Theme toggle ──────────────────────────────────────────────────────────
+    const themeToggle = document.getElementById('themeToggle');
+    const ICON_SUN  = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>`;
+    const ICON_MOON = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      themeToggle.innerHTML = theme === 'dark' ? ICON_SUN : ICON_MOON;
+      localStorage.setItem('colortracker_theme', theme);
+    }
+    applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
+    themeToggle.addEventListener('click', () => {
+      applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+  </script>
+</body>
+</html>
