@@ -154,7 +154,6 @@ body {
 /* ── Header ───────────────────────────────────────────────────────────────── */
 .app-header {
   margin-bottom: 28px;
-  overflow-x: hidden;
 }
 
 .header-top {
@@ -164,6 +163,7 @@ body {
   gap: 16px;
   margin-bottom: 18px;
   flex-wrap: wrap;
+  overflow-x: hidden;
 }
 
 .app-title {
@@ -266,6 +266,61 @@ body {
 }
 .toggle-btn--inactive:hover { opacity: 0.8; }
 .toggle-btn:active { filter: brightness(0.9); }
+
+/* ── View select (dropdown filter group) ─────────────────────────────────── */
+.view-select { position: relative; display: inline-block; }
+.view-select-current {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+.view-select-current::marker { content: ''; }
+.view-select-current::-webkit-details-marker { display: none; }
+.view-select-current svg { opacity: 0.7; transition: transform 0.15s; flex-shrink: 0; }
+.view-select[open] .view-select-current svg { transform: rotate(180deg); }
+.view-select-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  min-width: 200px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 40;
+}
+.view-select-list button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.view-select-list button:hover { background: var(--line); color: var(--ink); }
+.view-select-list button.active { background: var(--accent-soft); color: var(--accent); }
 
 /* ── Auth bar ─────────────────────────────────────────────────────────────── */
 .auth-bar {

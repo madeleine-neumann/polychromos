@@ -47,12 +47,18 @@
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') dd.open = false;
       });
+      document.addEventListener('click', (e) => {
+        document.querySelectorAll('.view-select[open]').forEach(vs => {
+          if (!vs.contains(e.target)) vs.open = false;
+        });
+      });
     })();
   </script>
   <div id="app" class="app-inner"></div>
 
   <script>
     const ICON_SPECTRUM = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/></svg>`;
+    const ICON_CHEVRON = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
 
     let filter = 'all';
     function setFilter(f) { filter = f; renderAll(); }
@@ -137,11 +143,17 @@
             </span>
             <span class="mode-switch-label${sortMode === 'rainbow' ? ' mode-switch-label--active' : ''}">Regenbogen</span>
           </label>
-          <div class="view-toggle">
-            <button id="btn-all"         class="toggle-btn" onclick="setFilter('all')">Alle</button>
-            <button id="btn-polychromos" class="toggle-btn" onclick="setFilter('polychromos')">Nur Polychromos</button>
-            <button id="btn-ohuhu"       class="toggle-btn" onclick="setFilter('ohuhu')">Nur Ohuhu</button>
-          </div>
+          <details class="view-select">
+            <summary class="view-select-current">
+              <span>${{ all: 'Alle', polychromos: 'Nur Polychromos', ohuhu: 'Nur Ohuhu' }[filter]}</span>
+              ${ICON_CHEVRON}
+            </summary>
+            <div class="view-select-list">
+              <button class="${filter === 'all'         ? 'active' : ''}" onclick="setFilter('all')">Alle</button>
+              <button class="${filter === 'polychromos' ? 'active' : ''}" onclick="setFilter('polychromos')">Nur Polychromos</button>
+              <button class="${filter === 'ohuhu'       ? 'active' : ''}" onclick="setFilter('ohuhu')">Nur Ohuhu</button>
+            </div>
+          </details>
         </div>`;
     }
 
@@ -186,9 +198,6 @@
 
     function renderAll() {
       document.getElementById('app').innerHTML = renderHeader() + renderTable();
-      ['all','polychromos','ohuhu'].forEach(f => {
-        document.getElementById(`btn-${f}`).className = `toggle-btn toggle-btn--${filter === f ? 'active' : 'inactive'}`;
-      });
     }
 
     renderAll();

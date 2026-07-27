@@ -250,6 +250,8 @@
       const count  = ownedCount();
       const rCount = refillCount();
       const pct = Math.round(count / MARKERS.length * 100);
+      const wishlistLabel = `Einkaufsliste${wishlistCount() ? ` (${wishlistCount()})` : ''}`;
+      const viewLabels = { numeric: 'Nummerisch', groups: 'Farbgruppen', wishlist: wishlistLabel, table: 'Tabelle', shoprefill: 'Nachfüller im Shop' };
       return `
         <div class="app-header">
           <div class="header-top">
@@ -264,19 +266,26 @@
             <span class="progress-label">${count} / ${MARKERS.length} · ${pct}%</span>
             <span class="progress-label refill-label">Nachfüller: ${rCount} / ${count}</span>
           </div>
-          <div class="view-toggle">
-            <button id="btn-numeric"  class="toggle-btn" onclick="setView('numeric')">Nummerisch</button>
-            <button id="btn-groups"   class="toggle-btn" onclick="setView('groups')">Farbgruppen</button>
-            <button id="btn-wishlist" class="toggle-btn" onclick="setView('wishlist')">Einkaufsliste${wishlistCount() ? ` (${wishlistCount()})` : ''}</button>
-            <button id="btn-table"    class="toggle-btn" onclick="setView('table')">Tabelle</button>
-            <button id="btn-shoprefill" class="toggle-btn" onclick="setView('shoprefill')">Nachfüller im Shop</button>
-          </div>
+          <details class="view-select">
+            <summary class="view-select-current">
+              <span>${viewLabels[currentView]}</span>
+              ${ICON_CHEVRON}
+            </summary>
+            <div class="view-select-list">
+              <button class="${currentView === 'numeric'    ? 'active' : ''}" onclick="setView('numeric')">Nummerisch</button>
+              <button class="${currentView === 'groups'     ? 'active' : ''}" onclick="setView('groups')">Farbgruppen</button>
+              <button class="${currentView === 'wishlist'   ? 'active' : ''}" onclick="setView('wishlist')">${wishlistLabel}</button>
+              <button class="${currentView === 'table'      ? 'active' : ''}" onclick="setView('table')">Tabelle</button>
+              <button class="${currentView === 'shoprefill' ? 'active' : ''}" onclick="setView('shoprefill')">Nachfüller im Shop</button>
+            </div>
+          </details>
         </div>`;
     }
 
     const PENCILS_BY_NR = Object.fromEntries(PENCILS.map(p => [p.nr, p]));
 
     const ICON_MARKER = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>`;
+    const ICON_CHEVRON = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
     const ICON_SYNCING = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>`;
     const ICON_CLOUD = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h.79a4.5 4.5 0 1 1 0 9z"/></svg>`;
     const ICON_WARN = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
@@ -447,11 +456,6 @@
          currentView === 'table'      ? renderTable() :
          currentView === 'shoprefill' ? renderShopRefillTable() :
          renderNumeric());
-      document.getElementById('btn-numeric').className  = `toggle-btn toggle-btn--${currentView === 'numeric'  ? 'active' : 'inactive'}`;
-      document.getElementById('btn-groups').className   = `toggle-btn toggle-btn--${currentView === 'groups'   ? 'active' : 'inactive'}`;
-      document.getElementById('btn-wishlist').className = `toggle-btn toggle-btn--${currentView === 'wishlist' ? 'active' : 'inactive'}`;
-      document.getElementById('btn-table').className    = `toggle-btn toggle-btn--${currentView === 'table'    ? 'active' : 'inactive'}`;
-      document.getElementById('btn-shoprefill').className = `toggle-btn toggle-btn--${currentView === 'shoprefill' ? 'active' : 'inactive'}`;
     }
 
     renderAll();

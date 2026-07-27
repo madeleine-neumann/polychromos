@@ -48,6 +48,11 @@
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') dd.open = false;
       });
+      document.addEventListener('click', (e) => {
+        document.querySelectorAll('.view-select[open]').forEach(vs => {
+          if (!vs.contains(e.target)) vs.open = false;
+        });
+      });
     })();
   </script>
   <div id="app" class="app-inner"></div>
@@ -189,6 +194,7 @@
     const ICON_MISSING = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
     const ICON_CART = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>`;
     const ICON_LINK = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
+    const ICON_CHEVRON = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
 
     function renderHeader(rows) {
       const ownedPencils = rows.filter(r => r.pencilOwned);
@@ -206,11 +212,17 @@
             <span class="progress-label">${ownedPencils.length - missing.length} / ${ownedPencils.length} Zwillinge vorhanden</span>
             <span class="progress-label refill-label">${missing.length} fehlen noch</span>
           </div>
-          <div class="view-toggle">
-            <button id="btn-all"     class="toggle-btn" onclick="setFilter('all')">Alle Stifte</button>
-            <button id="btn-owned"   class="toggle-btn" onclick="setFilter('owned')">Nur besessene Stifte</button>
-            <button id="btn-missing" class="toggle-btn" onclick="setFilter('missing')">Nur fehlende Zwillinge</button>
-          </div>
+          <details class="view-select">
+            <summary class="view-select-current">
+              <span>${{ all: 'Alle Stifte', owned: 'Nur besessene Stifte', missing: 'Nur fehlende Zwillinge' }[filter]}</span>
+              ${ICON_CHEVRON}
+            </summary>
+            <div class="view-select-list">
+              <button class="${filter === 'all'     ? 'active' : ''}" onclick="setFilter('all')">Alle Stifte</button>
+              <button class="${filter === 'owned'   ? 'active' : ''}" onclick="setFilter('owned')">Nur besessene Stifte</button>
+              <button class="${filter === 'missing' ? 'active' : ''}" onclick="setFilter('missing')">Nur fehlende Zwillinge</button>
+            </div>
+          </details>
         </div>`;
     }
 
@@ -277,9 +289,6 @@
       const rows = buildRows();
       const app = document.getElementById('app');
       app.innerHTML = renderHeader(rows) + renderTable(rows);
-      ['all','owned','missing'].forEach(f => {
-        document.getElementById(`btn-${f}`).className = `toggle-btn toggle-btn--${filter === f ? 'active' : 'inactive'}`;
-      });
     }
 
     renderAll();
