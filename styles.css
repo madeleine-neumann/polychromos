@@ -570,6 +570,7 @@ body {
   font-family: 'Nunito', sans-serif;
 }
 .data-table th {
+  position: relative;
   text-align: left;
   font-size: 11px;
   font-weight: 800;
@@ -629,7 +630,11 @@ body {
   font-family: 'Nunito', sans-serif;
   padding: 4px 8px;
   border-radius: 6px;
-  white-space: nowrap;
+  white-space: normal;
+  max-width: 220px;
+  width: max-content;
+  text-align: left;
+  line-height: 1.35;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.15s;
@@ -639,7 +644,8 @@ body {
 
 /* top-positioned badges: tooltip below */
 .tile-cart-badge:not(.tile-cart-badge--br)[data-tooltip]::after,
-.tile-badge[data-tooltip]::after {
+.tile-badge[data-tooltip]::after,
+.data-table th[data-tooltip]::after {
   bottom: auto;
   top: calc(100% + 6px);
 }
