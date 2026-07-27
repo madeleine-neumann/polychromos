@@ -714,6 +714,75 @@ a.tile-code:hover { text-decoration: underline; }
 .table-icon-btn--active { color: var(--accent); }
 .table-icon-btn--green  { color: var(--ok); }
 .table-lf { font-size: 11px; white-space: nowrap; }
+.source-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.source-badge--polychromos { background: var(--accent-soft); color: var(--accent); }
+.source-badge--ohuhu { background: var(--line); color: var(--accent-warm); }
+.table-section-row td {
+  padding: 10px 10px 5px;
+  border-bottom: none;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+.table-section-row:not(:first-child) td { padding-top: 20px; }
+
+/* ── Mode switch ──────────────────────────────────────────────────────────── */
+.mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  margin-bottom: 12px;
+  user-select: none;
+}
+.mode-switch-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  transition: color 0.15s;
+}
+.mode-switch-label--active { color: var(--accent); }
+.mode-switch-toggle { position: relative; display: inline-flex; }
+.mode-switch-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+.mode-switch-track {
+  display: block;
+  width: 38px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--line);
+  transition: background 0.2s;
+}
+.mode-switch-thumb {
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: 3px;
+  border-radius: 50%;
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s;
+}
+.mode-switch-toggle input:checked + .mode-switch-track { background: var(--accent); }
+.mode-switch-toggle input:checked + .mode-switch-track .mode-switch-thumb { transform: translateX(16px); }
+.mode-switch-toggle input:focus-visible + .mode-switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ── Tooltips ─────────────────────────────────────────────────────────────── */
 [data-tooltip]::after {
